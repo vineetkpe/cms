@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { authenticateStaticUser, createSession, requireAdmin, sameOriginError, sessionCookie } from '../../../lib/auth';
+import { authenticateStaticUser, createSession, requireAdmin, revokeSession, sameOriginError, sessionCookie } from '../../../lib/auth';
 import { contentLengthOkay } from '../../../lib/security';
 
 export const prerender = false;
@@ -83,6 +83,7 @@ export const GET: APIRoute = async ({ request }) => {
 export const DELETE: APIRoute = async ({ request }) => {
   const originError = sameOriginError(request);
   if (originError) return originError;
+  await revokeSession(request);
   return new Response(JSON.stringify({ ok: true }), {
     headers: {
       'Content-Type': 'application/json',
