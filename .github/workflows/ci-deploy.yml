@@ -3,10 +3,11 @@ name: Build and deploy
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '.cms/drafts/**'
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,5 +28,5 @@ jobs:
       - run: npm run check
       - run: npm run build
       - name: Deploy to Cloudflare Workers
-        if: github.event_name == 'push' && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        if: (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
         run: npx wrangler deploy

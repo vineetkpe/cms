@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
-import { getPublishedPosts } from '../lib/posts';
+import { getPublishedPosts, slugify } from '../lib/posts';
 import site from '../data/site.json';
 
 const posts = await getPublishedPosts();
-const featured = posts[0];
-const rest = posts.slice(1, 7);
+const featured = posts.find((post) => post.data.featured) || posts[0];
+const rest = posts.filter((post) => post.id !== featured?.id).slice(0, 6);
+const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 3);
 ---
 <BaseLayout title={site.name} description={site.description}>
   <section class="hero">
@@ -27,4 +28,15 @@ const rest = posts.slice(1, 7);
       )}
     </div>
   </section>
+  {categoryNames.map((name) => {
+    const categoryPosts = posts.filter((post) => post.data.category === name).slice(0, 3);
+    return (
+      <section class="section category-strip">
+        <div class="container">
+          <div class="section-head"><h2>{name}</h2><a href={`/category/${slugify(name)}/`}>View category</a></div>
+          <div class="post-grid">{categoryPosts.map((post) => <PostCard post={post} />)}</div>
+        </div>
+      </section>
+    );
+  })}
 </BaseLayout>

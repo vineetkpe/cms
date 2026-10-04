@@ -1,3 +1,5 @@
+export type AdminFaq = { question: string; answer: string };
+
 export type AdminPost = {
   slug: string;
   originalSlug?: string;
@@ -15,6 +17,9 @@ export type AdminPost = {
   canonical?: string;
   draft: boolean;
   noindex: boolean;
+  featured: boolean;
+  hideAds: boolean;
+  faq: AdminFaq[];
   body: string;
   sha?: string;
 };
@@ -41,6 +46,9 @@ export function toMarkdown(post: AdminPost) {
     post.canonical ? `canonical: ${q(post.canonical)}` : null,
     `draft: ${Boolean(post.draft)}`,
     `noindex: ${Boolean(post.noindex)}`,
+    `featured: ${Boolean(post.featured)}`,
+    `hideAds: ${Boolean(post.hideAds)}`,
+    `faq: ${JSON.stringify(post.faq || [])}`,
     '---',
     '',
     body.trim(),
@@ -65,12 +73,18 @@ export function parseMarkdown(text: string, slug: string, sha?: string): AdminPo
     const key = line.slice(0, idx).trim();
     const raw = line.slice(idx + 1).trim();
     if (raw === 'true' || raw === 'false') meta[key] = raw === 'true';
-    else if (raw.startsWith('[')) {
-      try { meta[key] = JSON.parse(raw); } catch { meta[key] = []; }
+    else if (raw.startsWith('[') || raw.startsWith('{')) {
+      try { meta[key] = JSON.parse(raw); } catch { meta[key] = raw.startsWith('[') ? [] : {}; }
     } else {
       try { meta[key] = JSON.parse(raw); } catch { meta[key] = raw; }
     }
   }
+  const faq = Array.isArray(meta.faq)
+    ? meta.faq
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        .map((item) => ({ question: String(item.question || ''), answer: String(item.answer || '') }))
+        .filter((item) => item.question && item.answer)
+    : [];
   return {
     slug,
     title: String(meta.title || ''),
@@ -87,6 +101,9 @@ export function parseMarkdown(text: string, slug: string, sha?: string): AdminPo
     canonical: meta.canonical ? String(meta.canonical) : undefined,
     draft: Boolean(meta.draft),
     noindex: Boolean(meta.noindex),
+    featured: Boolean(meta.featured),
+    hideAds: Boolean(meta.hideAds),
+    faq,
     body: match[2].trim(),
     sha
   };

@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPublishedPosts, slugify } from '../lib/posts';
+const posts = await getPublishedPosts();
+const categories = [...new Set(posts.map((post) => post.data.category))]
+  .map((name) => ({ name, count: posts.filter((post) => post.data.category === name).length }))
+  .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+---
+<BaseLayout title="Categories" description="Browse all article categories.">
+  <section class="hero"><div class="container hero-copy"><div class="kicker">Explore</div><h1>Categories</h1><p>Browse the publication by topic.</p></div></section>
+  <section class="section"><div class="container taxonomy-grid">{categories.map((item) => <a class="taxonomy-card" href={`/category/${slugify(item.name)}/`}><strong>{item.name}</strong><span>{item.count} article{item.count === 1 ? '' : 's'}</span></a>)}</div></section>
+</BaseLayout>

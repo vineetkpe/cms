@@ -1,0 +1,41 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Article preview</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#111827;line-height:1.7;background:#fff}.bar{position:sticky;top:0;background:#111827;color:#fff;padding:9px 16px;text-align:center;font-size:.82rem}.wrap{width:min(calc(100% - 32px),760px);margin:54px auto}.category{color:#1769e0;text-transform:uppercase;font-size:.75rem;font-weight:800;letter-spacing:.08em}h1{font-size:clamp(2.2rem,7vw,4rem);line-height:1.05;letter-spacing:-.05em;margin:.25em 0}.deck{color:#667085;font-size:1.12rem}.meta{font-size:.84rem;color:#7a8494;margin-bottom:30px}.hero{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px;margin:20px 0 34px;background:#f3f4f6}.content h2{font-size:1.8rem;margin-top:2em}.content h3{font-size:1.35rem;margin-top:1.7em}.content a{color:#1769e0}.content blockquote{border-left:3px solid #1769e0;padding-left:18px;color:#485365}.content code{background:#f4f5f7;padding:2px 5px;border-radius:4px}.content pre{background:#101828;color:#fff;padding:16px;border-radius:10px;overflow:auto}.faq{margin-top:50px}.faq details{border-top:1px solid #e5e7eb;padding:13px 0}.faq summary{font-weight:700}
+  </style>
+</head>
+<body>
+<div class="bar">Private local preview — this page is not publishable or indexed.</div>
+<main class="wrap" id="preview"><p>Loading preview…</p></main>
+<script is:inline>
+  const raw=localStorage.getItem('cms-preview');
+  const root=document.getElementById('preview');
+  const esc=(s='')=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  function markdown(input=''){
+    const safe=esc(input);
+    const lines=safe.split(/\r?\n/);let html='',list=false;
+    const inline=s=>s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_(.+?)_/g,'<em>$1</em>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g,'<a href="$2">$1</a>');
+    for(const line of lines){
+      if(/^### /.test(line)){if(list){html+='</ul>';list=false}html+=`<h3>${inline(line.slice(4))}</h3>`;continue}
+      if(/^## /.test(line)){if(list){html+='</ul>';list=false}html+=`<h2>${inline(line.slice(3))}</h2>`;continue}
+      if(/^# /.test(line)){if(list){html+='</ul>';list=false}html+=`<h2>${inline(line.slice(2))}</h2>`;continue}
+      if(/^- /.test(line)){if(!list){html+='<ul>';list=true}html+=`<li>${inline(line.slice(2))}</li>`;continue}
+      if(list){html+='</ul>';list=false}
+      if(/^&gt; /.test(line)){html+=`<blockquote>${inline(line.slice(5))}</blockquote>`;continue}
+      if(line.trim())html+=`<p>${inline(line)}</p>`;
+    }
+    if(list)html+='</ul>';return html;
+  }
+  if(!raw){root.innerHTML='<p>No preview data found. Return to the editor and click Preview.</p>'}
+  else{try{const p=JSON.parse(raw);root.innerHTML=`<div class="category">${esc(p.category)}</div><h1>${esc(p.title)}</h1><p class="deck">${esc(p.description)}</p><div class="meta">By ${esc(p.author)} · ${esc(p.pubDate)}</div>${p.featuredImage?`<img class="hero" src="${esc(p.featuredImage)}" alt="${esc(p.featuredImageAlt||p.title)}">`:''}<div class="content">${markdown(p.body)}</div>${p.faq?.length?`<section class="faq"><h2>Frequently asked questions</h2>${p.faq.map(i=>`<details><summary>${esc(i.question)}</summary><p>${esc(i.answer)}</p></details>`).join('')}</section>`:''}`;}catch(e){root.innerHTML='<p>Preview data is invalid.</p>'}}
+</script>
+</body>
+</html>

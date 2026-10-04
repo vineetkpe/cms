@@ -16,9 +16,12 @@ const posts = defineCollection({
     featuredImageAlt: z.string().optional(),
     seoTitle: z.string().optional(),
     seoDescription: z.string().optional(),
-    canonical: z.url().optional(),
+    canonical: z.string().optional(),
     draft: z.boolean().default(false),
-    noindex: z.boolean().default(false)
+    noindex: z.boolean().default(false),
+    featured: z.boolean().default(false),
+    hideAds: z.boolean().default(false),
+    faq: z.array(z.object({ question: z.string(), answer: z.string() })).default([])
   })
 });
 
