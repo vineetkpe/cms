@@ -1,6 +1,9 @@
 # Local development only. Never commit real secrets.
 DEV_ADMIN_BYPASS=true
 CMS_GITHUB_TOKEN=github_fine_grained_token_here
+# Optional but recommended: stable high-entropy key for encrypted drafts.
+# If omitted, CMS_GITHUB_TOKEN is used as the draft encryption secret.
+CMS_DRAFT_KEY=replace_with_a_long_random_secret
 CMS_GITHUB_REPO=vineetkpe/cms
 CMS_GITHUB_BRANCH=main
 CF_ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
