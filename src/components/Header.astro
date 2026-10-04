@@ -12,7 +12,7 @@ const isActive = (href: string) => href === '/' ? currentPath === '/' : currentP
 <header class="site-header">
   <div class="container header-inner">
     <a class="brand" href="/" aria-label={`${site.name} home`}>
-      <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>
+      {site.logoUrl ? <img class="brand-logo" src={site.logoUrl} alt="" width="36" height="36" decoding="async" /> : <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>}
       <span class="brand-name">{site.logoText || site.name}</span>
     </a>
 
@@ -66,3 +66,4 @@ const isActive = (href: string) => href === '/' ? currentPath === '/' : currentP
     if (event.key === 'Escape') closeMenu();
   });
 </script>
+<style>.brand-logo{width:36px;height:36px;object-fit:contain;border-radius:8px}</style>
