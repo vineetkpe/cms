@@ -1,4 +1,4 @@
-import { getSecret } from 'astro:env/server';
+import { env } from 'cloudflare:workers';
 
 export type CmsRole = 'owner' | 'admin' | 'editor' | 'author';
 
@@ -9,18 +9,54 @@ type StaticUser = {
   passwordHash: string;
 };
 
-type AuthConfig = {
-  sessionKey: string;
-  users: StaticUser[];
+type SessionRecord = {
+  username: string;
+  displayName: string;
+  role: CmsRole;
+  expiresAt: number;
+};
+
+type KvBinding = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  delete(key: string): Promise<void>;
 };
 
 const ALL_ROLES: CmsRole[] = ['owner', 'admin', 'editor', 'author'];
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 export const SESSION_COOKIE = '__Host-cms_session';
 export const SESSION_MAX_AGE = 8 * 60 * 60;
 const DUMMY_HASH = 'pbkdf2-sha256$600000$Y21zLWR1bW15LXNhbHQ$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
+// Exactly three fixed CMS accounts. Only salted PBKDF2 hashes are committed;
+// plaintext passwords are never stored in the repository.
+const STATIC_USERS: StaticUser[] = [
+  {
+    username: 'admin',
+    displayName: 'CMS Owner',
+    role: 'owner',
+    passwordHash: 'pbkdf2-sha256$600000$XhGbn_80GdBquhIpG-woYQ$bT5Q2z_EtQOj07Nq_oWCv8fkmQSX6rgqSqWi8TvLYXw',
+  },
+  {
+    username: 'manager',
+    displayName: 'CMS Admin',
+    role: 'admin',
+    passwordHash: 'pbkdf2-sha256$600000$z0Tgci-yGvjliSi2UMY1Kg$r1KOidKh33oPlt_d8xiQ80UDrAXU3dZZhgALr7VMi3g',
+  },
+  {
+    username: 'editor',
+    displayName: 'CMS Editor',
+    role: 'editor',
+    passwordHash: 'pbkdf2-sha256$600000$io_-a9x4fQ7QYf3sfyctBA$TT6eyd2xg-sx_nQS3DxgB2HC0RZ28tXedgMV4A8g47M',
+  },
+];
+
+function cmsKv(): KvBinding {
+  const binding = (env as any).CMS_KV as KvBinding | undefined;
+  if (!binding) throw new Error('CMS_KV is not configured.');
+  return binding;
+}
 
 function toBase64Url(bytes: Uint8Array) {
   let binary = '';
@@ -42,49 +78,8 @@ function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return copy.buffer;
 }
 
-function encodeJson(value: unknown) {
-  return toBase64Url(encoder.encode(JSON.stringify(value)));
-}
-
-function decodeJson<T>(value: string): T {
-  return JSON.parse(decoder.decode(fromBase64Url(value))) as T;
-}
-
 function cleanUsername(value: unknown) {
   return String(value || '').trim().toLowerCase();
-}
-
-function loadAuthConfig(): AuthConfig {
-  const raw = getSecret('CMS_AUTH_CONFIG');
-  if (!raw) throw new Error('CMS_AUTH_CONFIG is not configured.');
-  let parsed: any;
-  try { parsed = JSON.parse(raw); } catch { throw new Error('CMS_AUTH_CONFIG is invalid JSON.'); }
-
-  const sessionKey = String(parsed?.sessionKey || '');
-  const inputUsers = Array.isArray(parsed?.users) ? parsed.users : [];
-  if (sessionKey.length < 32) throw new Error('CMS_AUTH_CONFIG sessionKey must be at least 32 characters.');
-  if (inputUsers.length < 1 || inputUsers.length > 3) throw new Error('CMS_AUTH_CONFIG must contain between 1 and 3 users.');
-
-  const seen = new Set<string>();
-  const users: StaticUser[] = inputUsers.map((entry: any) => {
-    const username = cleanUsername(entry?.username);
-    const displayName = String(entry?.displayName || username).trim().slice(0, 100);
-    const role = String(entry?.role || '') as CmsRole;
-    const passwordHash = String(entry?.passwordHash || '');
-    if (!/^[a-z0-9._-]{3,64}$/.test(username)) throw new Error('CMS username format is invalid.');
-    if (seen.has(username)) throw new Error('CMS usernames must be unique.');
-    seen.add(username);
-    if (!displayName) throw new Error('CMS displayName is required.');
-    if (!ALL_ROLES.includes(role)) throw new Error(`Invalid CMS role for ${username}.`);
-    if (!/^pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/.test(passwordHash)) throw new Error(`Invalid password hash for ${username}.`);
-    return { username, displayName, role, passwordHash };
-  });
-
-  return { sessionKey, users };
-}
-
-async function hmacKey(secret: string) {
-  return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
 async function verifyPassword(password: string, stored: string) {
@@ -92,6 +87,7 @@ async function verifyPassword(password: string, stored: string) {
   if (parts.length !== 4 || parts[0] !== 'pbkdf2-sha256') return false;
   const iterations = Number(parts[1]);
   if (!Number.isInteger(iterations) || iterations < 310000 || iterations > 1200000) return false;
+
   let salt: Uint8Array;
   let expected: Uint8Array;
   try {
@@ -100,50 +96,80 @@ async function verifyPassword(password: string, stored: string) {
   } catch {
     return false;
   }
+
   if (salt.length < 12 || expected.length !== 32) return false;
   const baseKey = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const derived = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: bytesToArrayBuffer(salt), iterations }, baseKey, 256));
+  const derived = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'PBKDF2',
+    hash: 'SHA-256',
+    salt: bytesToArrayBuffer(salt),
+    iterations,
+  }, baseKey, 256));
+
   let diff = derived.length ^ expected.length;
   for (let i = 0; i < Math.min(derived.length, expected.length); i++) diff |= derived[i] ^ expected[i];
   return diff === 0;
 }
 
+async function sessionStorageKey(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(token));
+  return `cms:session:${toBase64Url(new Uint8Array(digest))}`;
+}
+
+function newSessionToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return toBase64Url(bytes);
+}
+
 export async function authenticateStaticUser(usernameInput: unknown, passwordInput: unknown) {
   const username = cleanUsername(usernameInput).slice(0, 64);
   const password = String(passwordInput || '').slice(0, 512);
-  const config = loadAuthConfig();
-  const user = config.users.find((candidate) => candidate.username === username);
+  const user = STATIC_USERS.find((candidate) => candidate.username === username);
   const valid = await verifyPassword(password, user?.passwordHash || DUMMY_HASH);
   return valid && user ? user : null;
 }
 
 export async function createSession(user: StaticUser) {
-  const config = loadAuthConfig();
-  const now = Math.floor(Date.now() / 1000);
-  const payload = encodeJson({ v: 1, u: user.username, r: user.role, n: user.displayName, iat: now, exp: now + SESSION_MAX_AGE });
-  const key = await hmacKey(config.sessionKey);
-  const signature = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(payload)));
-  return `${payload}.${toBase64Url(signature)}`;
+  const token = newSessionToken();
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
+  const record: SessionRecord = {
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+    expiresAt,
+  };
+  await cmsKv().put(await sessionStorageKey(token), JSON.stringify(record), { expirationTtl: SESSION_MAX_AGE });
+  return token;
 }
 
 async function verifySession(token: string) {
-  const [payload, signature, extra] = token.split('.');
-  if (!payload || !signature || extra) return null;
-  const config = loadAuthConfig();
-  const key = await hmacKey(config.sessionKey);
-  let signatureBytes: Uint8Array;
-  try { signatureBytes = fromBase64Url(signature); } catch { return null; }
-  const validSignature = await crypto.subtle.verify('HMAC', key, bytesToArrayBuffer(signatureBytes), encoder.encode(payload));
-  if (!validSignature) return null;
+  if (!/^[A-Za-z0-9_-]{40,100}$/.test(token)) return null;
 
-  let data: any;
-  try { data = decodeJson(payload); } catch { return null; }
+  const key = await sessionStorageKey(token);
+  const raw = await cmsKv().get(key);
+  if (!raw) return null;
+
+  let record: SessionRecord;
+  try {
+    record = JSON.parse(raw) as SessionRecord;
+  } catch {
+    await cmsKv().delete(key).catch(() => {});
+    return null;
+  }
+
   const now = Math.floor(Date.now() / 1000);
-  if (data?.v !== 1 || !Number.isInteger(data?.iat) || !Number.isInteger(data?.exp)) return null;
-  if (data.iat > now + 60 || data.exp <= now || data.exp - data.iat > SESSION_MAX_AGE + 60) return null;
+  if (!Number.isInteger(record.expiresAt) || record.expiresAt <= now || record.expiresAt > now + SESSION_MAX_AGE + 60) {
+    await cmsKv().delete(key).catch(() => {});
+    return null;
+  }
 
-  const user = config.users.find((candidate) => candidate.username === data.u);
-  if (!user || user.role !== data.r || user.displayName !== data.n) return null;
+  const user = STATIC_USERS.find((candidate) => candidate.username === record.username);
+  if (!user || user.role !== record.role || user.displayName !== record.displayName) {
+    await cmsKv().delete(key).catch(() => {});
+    return null;
+  }
+
   return user;
 }
 
@@ -154,6 +180,16 @@ function cookieValue(request: Request, name: string) {
     if (key === name) return decodeURIComponent(rest.join('='));
   }
   return '';
+}
+
+export async function revokeSession(request: Request) {
+  const token = cookieValue(request, SESSION_COOKIE);
+  if (!token) return;
+  try {
+    await cmsKv().delete(await sessionStorageKey(token));
+  } catch {
+    // Clearing the browser cookie still signs the user out locally.
+  }
 }
 
 export function sessionCookie(token: string, maxAge = SESSION_MAX_AGE) {
@@ -183,7 +219,7 @@ export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = A
   const originError = sameOriginError(request);
   if (originError) return { ok: false as const, status: 403, message: 'Cross-site requests are not allowed.' };
 
-  if (getSecret('DEV_ADMIN_BYPASS') === 'true') {
+  if (String((env as any).DEV_ADMIN_BYPASS || '') === 'true') {
     return {
       ok: true as const,
       id: 'local-dev',
