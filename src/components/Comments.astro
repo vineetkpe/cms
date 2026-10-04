@@ -1,0 +1,94 @@
+---
+const { postSlug } = Astro.props;
+---
+<section class="comments-section" data-comments data-post-slug={postSlug} aria-labelledby="comments-title">
+  <div class="comments-heading">
+    <div>
+      <div class="kicker">Discussion</div>
+      <h2 id="comments-title">Comments</h2>
+    </div>
+    <span class="comments-count" data-comment-count></span>
+  </div>
+  <p class="comments-note">Comments are reviewed before they appear. Please keep replies useful and respectful.</p>
+  <div class="comments-list" data-comment-list aria-live="polite"><p class="comments-empty">Loading comments…</p></div>
+
+  <form class="comment-form" data-comment-form>
+    <h3>Leave a comment</h3>
+    <div class="comment-fields">
+      <label>Name<input name="name" autocomplete="name" minlength="2" maxlength="80" required /></label>
+      <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required /><small>Your email is never shown publicly.</small></label>
+    </div>
+    <label>Comment<textarea name="body" rows="5" minlength="2" maxlength="3000" required></textarea></label>
+    <label class="form-trap" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off" /></label>
+    <div class="form-row"><button type="submit">Submit for review</button><span class="form-status" data-comment-status role="status"></span></div>
+  </form>
+</section>
+
+<script is:inline>
+  document.querySelectorAll('[data-comments]').forEach((root) => {
+    if (!(root instanceof HTMLElement)) return;
+    const slug = root.dataset.postSlug || '';
+    const list = root.querySelector('[data-comment-list]');
+    const count = root.querySelector('[data-comment-count]');
+    const form = root.querySelector('[data-comment-form]');
+    const status = root.querySelector('[data-comment-status]');
+
+    const render = (comments) => {
+      if (!(list instanceof HTMLElement)) return;
+      list.replaceChildren();
+      if (!Array.isArray(comments) || comments.length === 0) {
+        const empty = document.createElement('p'); empty.className = 'comments-empty'; empty.textContent = 'No approved comments yet. You can start the discussion.'; list.append(empty);
+        if (count instanceof HTMLElement) count.textContent = '0 comments';
+        return;
+      }
+      if (count instanceof HTMLElement) count.textContent = `${comments.length} comment${comments.length === 1 ? '' : 's'}`;
+      comments.forEach((item) => {
+        const article = document.createElement('article'); article.className = 'comment';
+        const top = document.createElement('div'); top.className = 'comment-top';
+        const name = document.createElement('strong'); name.textContent = String(item.author_name || 'Reader');
+        const time = document.createElement('time');
+        const date = new Date(item.created_at); time.dateTime = String(item.created_at || ''); time.textContent = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+        const body = document.createElement('p'); body.textContent = String(item.body || '');
+        top.append(name, time); article.append(top, body); list.append(article);
+      });
+    };
+
+    fetch(`/api/comments?post=${encodeURIComponent(slug)}`, { headers: { Accept: 'application/json' } })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data) => render(data.comments))
+      .catch(() => render([]));
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!(form instanceof HTMLFormElement)) return;
+      const button = form.querySelector('button[type="submit"]');
+      if (button instanceof HTMLButtonElement) button.disabled = true;
+      if (status instanceof HTMLElement) status.textContent = 'Sending…';
+      const data = new FormData(form);
+      try {
+        const response = await fetch('/api/comments', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ postSlug: slug, name: data.get('name'), email: data.get('email'), body: data.get('body'), company: data.get('company') }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Unable to submit comment.');
+        form.reset();
+        if (status instanceof HTMLElement) status.textContent = payload.message || 'Submitted for review.';
+      } catch (error) {
+        if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : 'Unable to submit comment.';
+      } finally {
+        if (button instanceof HTMLButtonElement) button.disabled = false;
+      }
+    });
+  });
+</script>
+
+<style>
+  .comments-section{margin-top:64px;padding-top:32px;border-top:1px solid var(--line)}
+  .comments-heading{display:flex;align-items:end;justify-content:space-between;gap:20px}.comments-heading h2{margin:4px 0 0;font-size:1.7rem;letter-spacing:-.035em}.comments-count{font-size:.82rem;color:var(--muted)}
+  .comments-note{color:var(--muted);font-size:.9rem;margin:10px 0 24px}.comments-list{display:grid;gap:0;margin-bottom:32px}.comment{padding:18px 0;border-top:1px solid var(--line)}.comment:last-child{border-bottom:1px solid var(--line)}.comment-top{display:flex;justify-content:space-between;gap:16px}.comment-top strong{font-size:.92rem}.comment-top time{font-size:.75rem;color:var(--muted)}.comment p{white-space:pre-wrap;margin:8px 0 0;color:#3f4650;font-size:.95rem}.comments-empty{color:var(--muted);font-size:.9rem}
+  .comment-form{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}.comment-form h3{margin:0 0 18px;font-size:1.15rem}.comment-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.comment-form label{display:grid;gap:6px;font-size:.82rem;font-weight:700}.comment-form input,.comment-form textarea{width:100%;border:1px solid #cfd4da;border-radius:9px;background:#fff;padding:10px 11px;color:var(--text)}.comment-form input:focus,.comment-form textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);border-color:var(--accent)}.comment-form small{font-weight:400;color:var(--muted)}.comment-form>label{margin-top:14px}.form-row{display:flex;align-items:center;gap:14px;margin-top:16px}.form-row button{border:0;border-radius:9px;background:var(--text);color:#fff;font-weight:750;padding:10px 15px;cursor:pointer}.form-row button:disabled{opacity:.55;cursor:wait}.form-status{font-size:.82rem;color:var(--muted)}.form-trap{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
+  @media(max-width:620px){.comment-fields{grid-template-columns:1fr}.form-row{align-items:flex-start;flex-direction:column}.comments-heading{align-items:flex-start;flex-direction:column;gap:6px}}
+</style>
