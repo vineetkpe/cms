@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getTextFile, putTextFile } from '../../../lib/github';
+import { audit, cmsUpdate } from '../../../lib/supabase';
 
 export const prerender = false;
 const PATH = 'src/data/site.json';
@@ -12,14 +13,14 @@ export const GET: APIRoute = async ({ request }) => {
   if (!auth.ok) return authError(auth);
   try {
     const file = await getTextFile(PATH);
-    return Response.json({ settings: JSON.parse(file.text), sha: file.sha });
+    return Response.json({ settings: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load settings.' }, { status: 500 });
   }
 };
 
 export const PUT: APIRoute = async ({ request }) => {
-  const auth = await requireAdmin(request);
+  const auth = await requireAdmin(request, ['owner', 'admin']);
   if (!auth.ok) return authError(auth);
   try {
     const { settings, sha } = await request.json();
@@ -63,7 +64,10 @@ export const PUT: APIRoute = async ({ request }) => {
     };
     if (!clean.name || !clean.tagline || !clean.description) throw new Error('Name, tagline and description are required.');
     const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update site settings', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const commit = result?.commit?.sha || null;
+    await cmsUpdate(auth.token, 'cms_settings', 'id=eq.1', { data: clean, updated_by: auth.id, updated_at: new Date().toISOString() });
+    await audit(auth.token, auth.id, auth.email, 'update_settings', 'settings', 'site', { commit });
+    return Response.json({ ok: true, commit });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update settings.' }, { status: 400 });
   }

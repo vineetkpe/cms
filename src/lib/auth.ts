@@ -1,26 +1,56 @@
 import { getSecret } from 'astro:env/server';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { bearerToken, getMembership, getSupabaseUser, type CmsRole } from './supabase';
 
-export async function requireAdmin(request: Request) {
+const ALL_ROLES: CmsRole[] = ['owner', 'admin', 'editor', 'author'];
+
+function cookieValue(request: Request, name: string) {
+  const cookie = request.headers.get('cookie') || '';
+  for (const part of cookie.split(';')) {
+    const [key, ...rest] = part.trim().split('=');
+    if (key === name) return decodeURIComponent(rest.join('='));
+  }
+  return '';
+}
+
+export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = ALL_ROLES) {
   if (getSecret('DEV_ADMIN_BYPASS') === 'true') {
-    return { ok: true as const, email: 'local-dev' };
+    return {
+      ok: true as const,
+      id: 'local-dev',
+      email: 'local-dev@example.test',
+      role: 'owner' as CmsRole,
+      displayName: 'Local Admin',
+      token: 'local-dev',
+    };
   }
 
-  const token = request.headers.get('cf-access-jwt-assertion');
-  const audience = getSecret('CF_ACCESS_AUD');
-  const rawDomain = getSecret('CF_ACCESS_TEAM_DOMAIN');
+  const token = bearerToken(request) || cookieValue(request, 'cms_access');
+  if (!token) return { ok: false as const, status: 401, message: 'Sign in to the CMS.' };
 
-  if (!token || !audience || !rawDomain) {
-    return { ok: false as const, status: 403, message: 'Cloudflare Access authentication is required.' };
-  }
-
-  const issuer = rawDomain.replace(/\/$/, '');
   try {
-    const jwks = createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`));
-    const { payload } = await jwtVerify(token, jwks, { issuer, audience });
-    return { ok: true as const, email: String(payload.email || 'authenticated-admin') };
+    const user = await getSupabaseUser(token);
+    const id = String(user?.id || '');
+    const email = String(user?.email || '');
+    if (!id || !email) return { ok: false as const, status: 401, message: 'Invalid Supabase session.' };
+
+    const membership = await getMembership(token, id);
+    if (!membership?.is_active) return { ok: false as const, status: 403, message: 'This account does not have CMS access.' };
+
+    const role = String(membership.role || '') as CmsRole;
+    if (!ALL_ROLES.includes(role) || !allowedRoles.includes(role)) {
+      return { ok: false as const, status: 403, message: 'Your CMS role does not allow this action.' };
+    }
+
+    return {
+      ok: true as const,
+      id,
+      email,
+      role,
+      displayName: String(membership.display_name || email),
+      token,
+    };
   } catch {
-    return { ok: false as const, status: 403, message: 'Invalid Cloudflare Access token.' };
+    return { ok: false as const, status: 401, message: 'Your CMS session is invalid or expired. Please sign in again.' };
   }
 }
 

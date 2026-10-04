@@ -1,10 +1,19 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getTextFile, putTextFile } from '../../../lib/github';
+import { audit, cmsUpdate } from '../../../lib/supabase';
 
 export const prerender = false;
 const PATH = 'src/data/pages.json';
 const KEYS = ['about', 'contact', 'editorialPolicy', 'privacy', 'terms', 'disclaimer'] as const;
+const SLUGS: Record<(typeof KEYS)[number], string> = {
+  about: 'about',
+  contact: 'contact',
+  editorialPolicy: 'editorial-policy',
+  privacy: 'privacy',
+  terms: 'terms',
+  disclaimer: 'disclaimer',
+};
 
 function cleanPages(input: any) {
   const out: Record<string, { title: string; description: string; kicker: string; body: string }> = {};
@@ -25,20 +34,35 @@ export const GET: APIRoute = async ({ request }) => {
   if (!auth.ok) return authError(auth);
   try {
     const file = await getTextFile(PATH);
-    return Response.json({ pages: JSON.parse(file.text), sha: file.sha });
+    return Response.json({ pages: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load pages.' }, { status: 500 });
   }
 };
 
 export const PUT: APIRoute = async ({ request }) => {
-  const auth = await requireAdmin(request);
+  const auth = await requireAdmin(request, ['owner', 'admin', 'editor']);
   if (!auth.ok) return authError(auth);
   try {
     const { pages, sha } = await request.json();
     const clean = cleanPages(pages);
     const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update trust and legal pages', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const commit = result?.commit?.sha || null;
+    const now = new Date().toISOString();
+    for (const key of KEYS) {
+      const page = clean[key];
+      await cmsUpdate(auth.token, 'cms_pages', `slug=eq.${encodeURIComponent(SLUGS[key])}`, {
+        title: page.title,
+        description: page.description,
+        kicker: page.kicker || null,
+        body: page.body,
+        updated_by: auth.id,
+        updated_at: now,
+        mirror_commit_sha: commit,
+      });
+    }
+    await audit(auth.token, auth.id, auth.email, 'update_pages', 'pages', 'trust-legal', { commit });
+    return Response.json({ ok: true, commit });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update pages.' }, { status: 400 });
   }
