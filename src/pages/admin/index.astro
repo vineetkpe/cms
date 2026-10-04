@@ -14,17 +14,16 @@ export const prerender = true;
 </head>
 <body>
 <main class="wrap" id="app" hidden>
-  <div class="top"><div><div class="kicker">Private administration</div><h1>Control Center</h1><p>Publishing, SEO, appearance, moderation and site operations.</p><div class="session" id="sessionLabel"></div></div><div class="actions"><a class="site" href="/" target="_blank">View website ↗</a><button class="logout" id="logout">Sign out</button></div></div>
+  <div class="top"><div><div class="kicker">Private administration</div><h1>Control Center</h1><p>Publishing, SEO, appearance and site operations.</p><div class="session" id="sessionLabel"></div></div><div class="actions"><a class="site" href="/" target="_blank">View website ↗</a><button class="logout" id="logout">Sign out</button></div></div>
   <div class="grid">
     <a class="card" href="/admin/content/"><div class="icon">Aa</div><h2>Posts & SEO</h2><p>Write, schedule and publish posts with metadata, FAQs, images, tags and ad controls.</p></a>
-    <a class="card" href="/admin/pages/"><div class="icon">Pg</div><h2>Pages & SEO</h2><p>Edit About, Contact, Privacy, Terms, Disclaimer and Editorial Policy with page-level SEO.</p></a>
-    <a class="card admin-only" href="/admin/settings/"><div class="icon">St</div><h2>Appearance & settings</h2><p>Brand, logo, colors, navigation, footer, analytics, Search Console, AdSense and comments.</p></a>
-    <a class="card editor-only" href="/admin/comments/"><div class="icon">Cm</div><h2>Comments</h2><p>Approve useful reader discussion, mark spam or remove unwanted comments.</p></a>
-    <a class="card admin-only" href="/admin/inbox/"><div class="icon">In</div><h2>Contact inbox</h2><p>Review website contact-form messages without exposing visitor data publicly.</p></a>
-    <a class="card" href="/admin/media/"><div class="icon">Im</div><h2>Media library</h2><p>Upload optimized images, browse existing media, copy URLs and manage files.</p></a>
+    <a class="card editor-only" href="/admin/pages/"><div class="icon">Pg</div><h2>Pages & SEO</h2><p>Edit About, Contact, Privacy, Terms, Disclaimer and Editorial Policy with page-level SEO.</p></a>
+    <a class="card admin-only" href="/admin/settings/"><div class="icon">St</div><h2>Appearance & settings</h2><p>Brand, logo, colors, navigation, footer, analytics, Search Console and AdSense.</p></a>
+    <a class="card" href="/admin/media/"><div class="icon">Im</div><h2>Media library</h2><p>Upload optimized images, browse existing media and copy public URLs.</p></a>
+    <a class="card editor-only" href="/admin/content/#redirects"><div class="icon">301</div><h2>Redirects</h2><p>Maintain static SEO redirects that are generated during each site build.</p></a>
     <a class="card" href="/articles/" target="_blank"><div class="icon">↗</div><h2>Public archive</h2><p>Review the public article archive and published content.</p></a>
   </div>
-  <div class="note">Public articles remain static Astro pages for speed. Supabase handles private CMS state, authentication, comments and contact submissions with role-based access.</div>
+  <div class="note">Public pages stay static. CMS accounts use Worker-secret password hashes and signed HttpOnly sessions; drafts are encrypted before they are committed to GitHub.</div>
 </main>
 <script is:inline>
   const app = document.querySelector('#app');
@@ -33,7 +32,7 @@ export const prerender = true;
     if (!response.ok) { location.replace('/admin/login/'); return; }
     const data = await response.json();
     const role = data.user?.role || 'member';
-    if (label instanceof HTMLElement) label.textContent = `${data.user?.displayName || data.user?.email || 'CMS user'} · ${role}`;
+    if (label instanceof HTMLElement) label.textContent = `${data.user?.displayName || data.user?.username || 'CMS user'} · ${role}`;
     if (!['owner','admin'].includes(role)) document.querySelectorAll('.admin-only').forEach((node) => node.remove());
     if (!['owner','admin','editor'].includes(role)) document.querySelectorAll('.editor-only').forEach((node) => node.remove());
     if (app instanceof HTMLElement) app.hidden = false;
