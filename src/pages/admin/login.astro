@@ -1,0 +1,70 @@
+---
+export const prerender = true;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>CMS Login</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7fa;color:#111827;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px}.card{width:min(100%,430px);background:#fff;border:1px solid #e2e7ee;border-radius:18px;padding:30px;box-shadow:0 18px 55px rgba(16,24,40,.08)}.brand{font-weight:850;font-size:1.35rem;margin-bottom:28px}.kicker{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800;color:#1769e0}.card h1{font-size:1.9rem;letter-spacing:-.04em;margin:8px 0 8px}.card p{color:#697386;margin:0 0 22px}.field{display:grid;gap:6px;margin:14px 0}.field label{font-size:.84rem;font-weight:750}.field input{width:100%;border:1px solid #d8dee8;border-radius:9px;padding:11px 12px;font:inherit}.field input:focus{outline:2px solid #1769e033;border-color:#1769e0}.button{width:100%;border:0;background:#1769e0;color:#fff;padding:11px 14px;border-radius:9px;font:inherit;font-weight:800;cursor:pointer;margin-top:8px}.button:disabled{opacity:.6;cursor:wait}.message{display:none;margin-top:14px;border-radius:8px;padding:10px 12px;font-size:.88rem}.message.show{display:block}.message.err{background:#fef3f2;color:#b42318}.message.ok{background:#ecfdf3;color:#027a48}.note{margin-top:20px;padding-top:18px;border-top:1px solid #e7ebf0;color:#7b8493;font-size:.78rem;line-height:1.55}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">CMS</div>
+    <div class="kicker">Team access</div>
+    <h1>Sign in</h1>
+    <p>Use the Supabase account that has been added to this publication.</p>
+    <form id="loginForm">
+      <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required /></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required /></div>
+      <button class="button" id="submit" type="submit">Sign in</button>
+    </form>
+    <div id="message" class="message"></div>
+    <div class="note">Accounts without an active CMS role are blocked even if the Supabase password is correct.</div>
+  </main>
+<script is:inline>
+  const form = document.querySelector('#loginForm');
+  const button = document.querySelector('#submit');
+  const message = document.querySelector('#message');
+  const show = (text, ok = false) => {
+    if (!(message instanceof HTMLElement)) return;
+    message.textContent = text;
+    message.className = `message show ${ok ? 'ok' : 'err'}`;
+  };
+
+  fetch('/api/admin/login', { credentials: 'same-origin' }).then(async (res) => {
+    if (res.ok) location.replace('/admin/');
+  }).catch(() => {});
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!(button instanceof HTMLButtonElement)) return;
+    const email = document.querySelector('#email');
+    const password = document.querySelector('#password');
+    if (!(email instanceof HTMLInputElement) || !(password instanceof HTMLInputElement)) return;
+    button.disabled = true;
+    button.textContent = 'Signing in…';
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.value, password: password.value }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Unable to sign in.');
+      show('Signed in. Opening CMS…', true);
+      location.replace('/admin/');
+    } catch (error) {
+      show(error instanceof Error ? error.message : 'Unable to sign in.');
+      button.disabled = false;
+      button.textContent = 'Sign in';
+    }
+  });
+</script>
+</body>
+</html>
