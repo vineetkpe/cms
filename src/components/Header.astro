@@ -2,18 +2,25 @@
 import site from '../data/site.json';
 ---
 <header class="site-header">
-  <div class="container header-inner">
-    <a class="brand" href="/" aria-label={`${site.name} home`}>{site.logoText || site.name}</a>
-    <nav class="desktop-nav" aria-label="Primary navigation">
-      {site.navigation.map((item) => <a href={item.href}>{item.label}</a>)}
-    </nav>
-    <div class="header-actions">
-      <a class="search-link" href="/search/" aria-label="Search site">Search</a>
-      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-nav">Menu</button>
+  <div class="container masthead">
+    <a class="brand" href="/" aria-label={`${site.name} home`}>
+      <span class="brand-mark">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>
+      <span>{site.logoText || site.name}</span>
+    </a>
+    <a class="header-search" href="/search/" aria-label="Search site">Search</a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-nav">Menu</button>
+  </div>
+  <div class="nav-bar">
+    <div class="container">
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        {site.navigation.map((item) => <a href={item.href}>{item.label}</a>)}
+        <a href="/articles/">All articles</a>
+      </nav>
     </div>
   </div>
   <nav id="mobile-nav" class="mobile-nav container" aria-label="Mobile navigation" hidden>
     {site.navigation.map((item) => <a href={item.href}>{item.label}</a>)}
+    <a href="/articles/">All articles</a>
     <a href="/search/">Search</a>
   </nav>
 </header>
