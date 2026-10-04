@@ -22,6 +22,16 @@ function cleanExpiryDate(value: unknown) {
   return raw;
 }
 
+function cleanTrendGeo(value: unknown) {
+  const geo = text(value || 'IN', 8).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+  return geo || 'IN';
+}
+
+function cleanTrendKeywords(value: unknown) {
+  const source = Array.isArray(value) ? value : String(value || '').split(',');
+  return [...new Set(source.map((item) => text(item, 60).toLowerCase().trim()).filter((item) => item.length >= 2))].slice(0, 40);
+}
+
 export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
@@ -98,11 +108,15 @@ export const PUT: APIRoute = async ({ request }) => {
       adsenseArticleSlot: text(settings.adsenseArticleSlot, 30).replace(/\D/g, ''),
       adsenseSidebarSlot: text(settings.adsenseSidebarSlot, 30).replace(/\D/g, ''),
       githubTokenExpiresAt: cleanExpiryDate(settings.githubTokenExpiresAt),
+      contentNiche: text(settings.contentNiche || 'Jobs, careers, education and useful updates', 320),
+      trendGeo: cleanTrendGeo(settings.trendGeo),
+      trendKeywords: cleanTrendKeywords(settings.trendKeywords),
       social: cleanSocial,
       navigation,
     };
 
     if (!clean.name || !clean.tagline || !clean.description) throw new Error('Name, tagline and description are required.');
+    if (!clean.contentNiche) throw new Error('Content niche is required for trend recommendations.');
     const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update site settings', String(sha || ''));
     return Response.json({ ok: true, commit: result?.commit?.sha || null });
   } catch (error) {
