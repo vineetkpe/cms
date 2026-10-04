@@ -4,17 +4,35 @@ const { post, featured = false, compact = false } = Astro.props;
 const href = `/${post.id.replace(/\.md$/, '')}/`;
 const categoryHref = `/category/${slugify(post.data.category)}/`;
 const authorHref = `/author/${slugify(post.data.author)}/`;
+const wordCount = String(post.body || '').trim().split(/\s+/).filter(Boolean).length;
+const readTime = Math.max(1, Math.ceil(wordCount / 220));
+const hasImage = Boolean(post.data.featuredImage);
 ---
-<article class:list={['post-card', { featured, compact }] }>
-  {post.data.featuredImage && (
+<article class:list={['post-card', { featured, compact, 'has-image': hasImage, 'text-only': !hasImage }] }>
+  {hasImage && (
     <a href={href} class="post-image-wrap" tabindex="-1" aria-hidden="true">
-      <img class="post-image" src={post.data.featuredImage} alt={post.data.featuredImageAlt || post.data.title} width="900" height="506" loading={featured ? 'eager' : 'lazy'} decoding="async" />
+      <img
+        class="post-image"
+        src={post.data.featuredImage}
+        alt={post.data.featuredImageAlt || post.data.title}
+        width="900"
+        height="506"
+        loading={featured ? 'eager' : 'lazy'}
+        fetchpriority={featured ? 'high' : 'auto'}
+        decoding="async"
+      />
     </a>
   )}
   <div class="post-card-body">
     <a class="eyebrow" href={categoryHref}>{post.data.category}</a>
     <h2><a href={href}>{post.data.title}</a></h2>
     {!compact && <p>{post.data.description}</p>}
-    <div class="post-meta"><a href={authorHref}>{post.data.author}</a><span>•</span><time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })}</time></div>
+    <div class="post-meta">
+      <a href={authorHref}>{post.data.author}</a>
+      <span aria-hidden="true">·</span>
+      <time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })}</time>
+      <span aria-hidden="true">·</span>
+      <span>{readTime} min read</span>
+    </div>
   </div>
 </article>
