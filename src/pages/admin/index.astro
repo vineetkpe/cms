@@ -14,16 +14,18 @@ export const prerender = true;
 </head>
 <body>
 <main class="wrap" id="app" hidden>
-  <div class="top"><div><div class="kicker">Private administration</div><h1>Control Center</h1><p>Publishing, SEO, appearance and site operations.</p><div class="session" id="sessionLabel"></div></div><div class="actions"><a class="site" href="/" target="_blank">View website ↗</a><button class="logout" id="logout">Sign out</button></div></div>
+  <div class="top"><div><div class="kicker">Private administration</div><h1>Control Center</h1><p>Publishing, SEO, backups, appearance and site operations.</p><div class="session" id="sessionLabel"></div></div><div class="actions"><a class="site" href="/" target="_blank">View website ↗</a><button class="logout" id="logout">Sign out</button></div></div>
   <div class="grid">
-    <a class="card" href="/admin/content/"><div class="icon">Aa</div><h2>Posts & SEO</h2><p>Write, schedule and publish posts with metadata, FAQs, images, tags and ad controls.</p></a>
+    <a class="card" href="/admin/editor/"><div class="icon">✎</div><h2>Publishing Studio</h2><p>Visual + Markdown editing, exact scheduling, templates, autosave, revisions, SEO and social metadata.</p></a>
+    <a class="card" href="/admin/content/"><div class="icon">Aa</div><h2>Posts</h2><p>Browse published, scheduled and private draft content, search the archive and manage redirects.</p></a>
     <a class="card editor-only" href="/admin/pages/"><div class="icon">Pg</div><h2>Pages & SEO</h2><p>Edit About, Contact, Privacy, Terms, Disclaimer and Editorial Policy with page-level SEO.</p></a>
     <a class="card admin-only" href="/admin/settings/"><div class="icon">St</div><h2>Appearance & settings</h2><p>Brand, logo, colors, navigation, footer, analytics, Search Console and AdSense.</p></a>
     <a class="card" href="/admin/media/"><div class="icon">Im</div><h2>Media library</h2><p>Upload optimized images, browse existing media and copy public URLs.</p></a>
+    <a class="card editor-only" href="/admin/tools/"><div class="icon">↕</div><h2>Tools & backups</h2><p>Portable JSON backups, WordPress XML export, safe restore checks, post templates and system health.</p></a>
     <a class="card editor-only" href="/admin/content/#redirects"><div class="icon">301</div><h2>Redirects</h2><p>Maintain static SEO redirects that are generated during each site build.</p></a>
     <a class="card" href="/articles/" target="_blank"><div class="icon">↗</div><h2>Public archive</h2><p>Review the public article archive and published content.</p></a>
   </div>
-  <div class="note">Public pages stay static. CMS accounts use Worker-secret password hashes and signed HttpOnly sessions; drafts are encrypted before they are committed to GitHub.</div>
+  <div class="note">Public pages remain static-first. CMS accounts use salted password hashes, D1-backed HttpOnly sessions and Git-versioned publishing. Published edits are recoverable through revision history, and portable exports reduce platform lock-in.</div>
 </main>
 <script is:inline>
   const app = document.querySelector('#app');
