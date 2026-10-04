@@ -1,5 +1,8 @@
 ---
 import ManagedPage from '../components/ManagedPage.astro';
+import ContactForm from '../components/ContactForm.astro';
 import pages from '../data/pages.json';
 ---
-<ManagedPage page={pages.contact} />
+<ManagedPage page={pages.contact}>
+  <ContactForm />
+</ManagedPage>

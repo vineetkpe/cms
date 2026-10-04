@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getTextFile, putTextFile } from '../../../lib/github';
 import { audit, cmsUpdate } from '../../../lib/supabase';
+import { safePublicUrl, text } from '../../../lib/security';
 
 export const prerender = false;
 const PATH = 'src/data/pages.json';
@@ -16,15 +17,22 @@ const SLUGS: Record<(typeof KEYS)[number], string> = {
 };
 
 function cleanPages(input: any) {
-  const out: Record<string, { title: string; description: string; kicker: string; body: string }> = {};
+  const out: Record<string, any> = {};
   for (const key of KEYS) {
     const page = input?.[key] || {};
-    const title = String(page.title || '').trim().slice(0, 120);
-    const description = String(page.description || '').trim().slice(0, 320);
-    const kicker = String(page.kicker || '').trim().slice(0, 80);
+    const title = text(page.title, 120);
+    const description = text(page.description, 320);
+    const kicker = text(page.kicker, 80);
     const body = String(page.body || '').trim().slice(0, 50000);
+    const seoTitle = text(page.seoTitle, 180);
+    const canonicalRaw = text(page.canonical, 500);
+    const canonical = canonicalRaw ? safePublicUrl(canonicalRaw) : '';
+    const ogRaw = text(page.ogImage, 500);
+    const ogImage = ogRaw ? safePublicUrl(ogRaw, true) : '';
+    if (canonicalRaw && !canonical) throw new Error(`Canonical URL is invalid for ${key}.`);
+    if (ogRaw && !ogImage) throw new Error(`Social image URL is invalid for ${key}.`);
     if (!title || !description || !body) throw new Error(`Title, description and body are required for ${key}.`);
-    out[key] = { title, description, kicker, body };
+    out[key] = { title, description, kicker, body, seoTitle, canonical, ogImage, noindex: Boolean(page.noindex) };
   }
   return out;
 }
@@ -36,7 +44,7 @@ export const GET: APIRoute = async ({ request }) => {
     const file = await getTextFile(PATH);
     return Response.json({ pages: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load pages.' }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load pages.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 };
 
@@ -56,6 +64,10 @@ export const PUT: APIRoute = async ({ request }) => {
         description: page.description,
         kicker: page.kicker || null,
         body: page.body,
+        seo_title: page.seoTitle || null,
+        canonical_url: page.canonical || null,
+        og_image: page.ogImage || null,
+        noindex: page.noindex,
         updated_by: auth.id,
         updated_at: now,
         mirror_commit_sha: commit,
@@ -64,6 +76,6 @@ export const PUT: APIRoute = async ({ request }) => {
     await audit(auth.token, auth.id, auth.email, 'update_pages', 'pages', 'trust-legal', { commit });
     return Response.json({ ok: true, commit });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to update pages.' }, { status: 400 });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to update pages.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
 };

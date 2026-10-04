@@ -11,7 +11,12 @@ const {
   image,
   noindex = false,
   schema,
-  ogType = 'website'
+  ogType = 'website',
+  author,
+  publishedTime,
+  modifiedTime,
+  section,
+  tags = []
 } = Astro.props;
 
 const pageTitle = title === site.name ? title : `${title} | ${site.name}`;
@@ -19,6 +24,9 @@ const canonicalUrl = canonical || new URL(Astro.url.pathname, site.url).toString
 const selectedImage = image || site.defaultOgImage || '';
 const ogImage = selectedImage ? new URL(selectedImage, site.url).toString() : undefined;
 const socialUrls = Object.values(site.social || {}).filter(Boolean);
+const logo = site.logoUrl ? new URL(site.logoUrl, site.url).toString() : undefined;
+const locale = String(site.language || 'en').replace('-', '_');
+const theme = site.theme || { surfaceColor: '#f6f6f3', radius: 14, maxWidth: 1240 };
 
 const websiteSchema = {
   '@context': 'https://schema.org',
@@ -40,11 +48,18 @@ const organizationSchema = {
   name: site.name,
   url: site.url,
   email: site.email || undefined,
+  logo,
   sameAs: socialUrls.length ? socialUrls : undefined
 };
 
 const extraSchemas = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
 const schemas = [websiteSchema, organizationSchema, ...extraSchemas];
+const jsonLd = JSON.stringify(schemas)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
 ---
 <!doctype html>
 <html lang={site.language || 'en'}>
@@ -56,17 +71,24 @@ const schemas = [websiteSchema, organizationSchema, ...extraSchemas];
     <meta name="application-name" content={site.name} />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
+    {author && <meta name="author" content={author} />}
     <link rel="canonical" href={canonicalUrl} />
     <meta name="robots" content={noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'} />
     {site.googleSiteVerification && <meta name="google-site-verification" content={site.googleSiteVerification} />}
 
     <meta property="og:type" content={ogType} />
+    <meta property="og:locale" content={locale} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content={site.name} />
     {ogImage && <meta property="og:image" content={ogImage} />}
     {ogImage && <meta property="og:image:alt" content={title} />}
+    {ogType === 'article' && publishedTime && <meta property="article:published_time" content={publishedTime} />}
+    {ogType === 'article' && modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+    {ogType === 'article' && section && <meta property="article:section" content={section} />}
+    {ogType === 'article' && author && <meta property="article:author" content={author} />}
+    {ogType === 'article' && Array.isArray(tags) && tags.map((tag) => <meta property="article:tag" content={tag} />)}
 
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
     <meta name="twitter:title" content={pageTitle} />
@@ -74,9 +96,9 @@ const schemas = [websiteSchema, organizationSchema, ...extraSchemas];
     {ogImage && <meta name="twitter:image" content={ogImage} />}
 
     <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />
-    <meta name="theme-color" content="#ffffff" />
-    <style is:inline>{`:root{--accent:${site.primaryColor}}`}</style>
-    <script type="application/ld+json" set:html={JSON.stringify(schemas)}></script>
+    <meta name="theme-color" content={site.primaryColor} />
+    <style is:inline>{`:root{--accent:${site.primaryColor};--surface:${theme.surfaceColor};--radius:${theme.radius}px;--max:${theme.maxWidth}px}`}</style>
+    <script type="application/ld+json" set:html={jsonLd}></script>
 
     {site.googleAnalyticsId && (
       <>

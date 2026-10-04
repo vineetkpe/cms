@@ -15,7 +15,7 @@ const categoryNames = [...new Set(posts.map((post) => post.data.category))].slic
   <section class="blog-hero">
     <div class="container blog-hero-inner">
       <div class="hero-copy-block">
-        <div class="kicker">{site.name}</div>
+        <div class="kicker">{site.homepageEyebrow || site.name}</div>
         <h1>{site.tagline}</h1>
         <p>{site.description}</p>
       </div>

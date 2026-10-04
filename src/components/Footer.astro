@@ -7,7 +7,7 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
   <div class="container footer-grid">
     <div class="footer-about">
       <a class="brand footer-brand" href="/" aria-label={`${site.name} home`}>
-        <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>
+        {site.logoUrl ? <img class="footer-logo" src={site.logoUrl} alt="" width="36" height="36" decoding="async" /> : <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>}
         <span>{site.logoText || site.name}</span>
       </a>
       <p>{site.footerText || site.description}</p>
@@ -23,6 +23,7 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
       <a href="/articles/">All articles</a>
       <a href="/categories/">Categories</a>
       <a href="/tags/">Tags</a>
+      <a href="/authors/">Authors</a>
       <a href="/search/">Search</a>
     </div>
 
@@ -31,6 +32,7 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
       <a href="/about/">About</a>
       <a href="/editorial-policy/">Editorial policy</a>
       <a href="/contact/">Contact</a>
+      <a href="/rss.xml">RSS feed</a>
     </div>
 
     <div class="footer-links">
@@ -44,4 +46,5 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
     <span>© {year} {site.name}. All rights reserved.</span>
     <span>Independent publishing, built for readers.</span>
   </div>
+  <style>.footer-logo{width:36px;height:36px;object-fit:contain;border-radius:8px}</style>
 </footer>
