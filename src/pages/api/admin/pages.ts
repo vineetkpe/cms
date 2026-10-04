@@ -1,20 +1,11 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getTextFile, putTextFile } from '../../../lib/github';
-import { audit, cmsUpdate } from '../../../lib/supabase';
 import { safePublicUrl, text } from '../../../lib/security';
 
 export const prerender = false;
 const PATH = 'src/data/pages.json';
 const KEYS = ['about', 'contact', 'editorialPolicy', 'privacy', 'terms', 'disclaimer'] as const;
-const SLUGS: Record<(typeof KEYS)[number], string> = {
-  about: 'about',
-  contact: 'contact',
-  editorialPolicy: 'editorial-policy',
-  privacy: 'privacy',
-  terms: 'terms',
-  disclaimer: 'disclaimer',
-};
 
 function cleanPages(input: any) {
   const out: Record<string, any> = {};
@@ -55,26 +46,7 @@ export const PUT: APIRoute = async ({ request }) => {
     const { pages, sha } = await request.json();
     const clean = cleanPages(pages);
     const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update trust and legal pages', String(sha || ''));
-    const commit = result?.commit?.sha || null;
-    const now = new Date().toISOString();
-    for (const key of KEYS) {
-      const page = clean[key];
-      await cmsUpdate(auth.token, 'cms_pages', `slug=eq.${encodeURIComponent(SLUGS[key])}`, {
-        title: page.title,
-        description: page.description,
-        kicker: page.kicker || null,
-        body: page.body,
-        seo_title: page.seoTitle || null,
-        canonical_url: page.canonical || null,
-        og_image: page.ogImage || null,
-        noindex: page.noindex,
-        updated_by: auth.id,
-        updated_at: now,
-        mirror_commit_sha: commit,
-      });
-    }
-    await audit(auth.token, auth.id, auth.email, 'update_pages', 'pages', 'trust-legal', { commit });
-    return Response.json({ ok: true, commit });
+    return Response.json({ ok: true, commit: result?.commit?.sha || null });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update pages.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }

@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getTextFile, putTextFile } from '../../../lib/github';
-import { audit, cmsDelete, cmsInsert } from '../../../lib/supabase';
 
 export const prerender = false;
 const PATH = 'src/data/redirects.json';
@@ -31,7 +30,7 @@ export const GET: APIRoute = async ({ request }) => {
     const file = await getTextFile(PATH);
     return Response.json({ redirects: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load redirects.' }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load redirects.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 };
 
@@ -42,20 +41,8 @@ export const PUT: APIRoute = async ({ request }) => {
     const { redirects, sha } = await request.json();
     const clean = cleanRedirects(redirects);
     const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update redirects', String(sha || ''));
-    const commit = result?.commit?.sha || null;
-
-    await cmsDelete(auth.token, 'cms_redirects', 'id=gt.0');
-    if (clean.length) {
-      await cmsInsert(auth.token, 'cms_redirects', clean.map((item) => ({
-        from_path: item.from,
-        to_path: item.to,
-        status: item.status,
-        updated_by: auth.id,
-      })));
-    }
-    await audit(auth.token, auth.id, auth.email, 'update_redirects', 'redirects', 'all', { count: clean.length, commit });
-    return Response.json({ ok: true, commit });
+    return Response.json({ ok: true, commit: result?.commit?.sha || null });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to update redirects.' }, { status: 400 });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to update redirects.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
 };

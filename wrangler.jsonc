@@ -13,5 +13,18 @@
   "vars": {
     "CMS_GITHUB_REPO": "vineetkpe/cms",
     "CMS_GITHUB_BRANCH": "main"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cms-db",
+      "database_id": "db7ae698-3313-4169-bba5-705ac2929426"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CMS_KV",
+      "id": "ab0f91cfe73f4aa3b893de5cbefe0c45"
+    }
+  ]
 }

@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getTextFile, putTextFile } from '../../../lib/github';
-import { audit, cmsUpdate } from '../../../lib/supabase';
 import { safePublicUrl, text } from '../../../lib/security';
 
 export const prerender = false;
@@ -21,7 +20,7 @@ export const GET: APIRoute = async ({ request }) => {
     const file = await getTextFile(PATH);
     return Response.json({ settings: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load settings.' }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load settings.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 };
 
@@ -83,7 +82,6 @@ export const PUT: APIRoute = async ({ request }) => {
       defaultOgImage,
       footerText: text(settings.footerText, 240),
       homepageEyebrow: text(settings.homepageEyebrow || 'Independent publication', 80),
-      commentsEnabled: settings.commentsEnabled !== false,
       theme: { surfaceColor, radius, maxWidth },
       googleAnalyticsId,
       googleSiteVerification: text(settings.googleSiteVerification, 160),
@@ -96,10 +94,7 @@ export const PUT: APIRoute = async ({ request }) => {
 
     if (!clean.name || !clean.tagline || !clean.description) throw new Error('Name, tagline and description are required.');
     const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update site settings', String(sha || ''));
-    const commit = result?.commit?.sha || null;
-    await cmsUpdate(auth.token, 'cms_settings', 'id=eq.1', { data: clean, updated_by: auth.id, updated_at: new Date().toISOString() });
-    await audit(auth.token, auth.id, auth.email, 'update_settings', 'settings', 'site', { commit });
-    return Response.json({ ok: true, commit });
+    return Response.json({ ok: true, commit: result?.commit?.sha || null });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update settings.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
