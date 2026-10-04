@@ -6,50 +6,76 @@ import site from '../data/site.json';
 
 const posts = await getPublishedPosts();
 const featured = posts.find((post) => post.data.featured) || posts[0];
-const secondary = posts.filter((post) => post.id !== featured?.id).slice(0, 2);
-const latest = posts.filter((post) => post.id !== featured?.id && !secondary.some((item) => item.id === post.id)).slice(0, 8);
-const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 4);
+const remaining = posts.filter((post) => post.id !== featured?.id);
+const secondary = remaining.slice(0, 2);
+const latest = remaining.slice(2, 11);
+const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 6);
 ---
 <BaseLayout title={site.name} description={site.description}>
-  <section class="publication-intro">
-    <div class="container intro-inner">
-      <div>
-        <div class="kicker">Latest updates & practical guides</div>
-        <h1>{site.name}</h1>
+  <section class="blog-hero">
+    <div class="container blog-hero-inner">
+      <div class="hero-copy-block">
+        <div class="kicker">{site.name}</div>
+        <h1>{site.tagline}</h1>
+        <p>{site.description}</p>
       </div>
-      <p>{site.tagline}</p>
+      <a class="hero-archive-link" href="/articles/">Browse all articles <span aria-hidden="true">→</span></a>
     </div>
   </section>
 
-  <section class="section section-first">
+  {categoryNames.length > 0 && (
+    <nav class="topic-strip" aria-label="Browse article categories">
+      <div class="container topic-strip-inner">
+        <a class="topic-link is-active" href="/">Latest</a>
+        {categoryNames.map((name) => <a class="topic-link" href={`/category/${slugify(name)}/`}>{name}</a>)}
+      </div>
+    </nav>
+  )}
+
+  <section class="section section-first" aria-labelledby="featured-heading">
     <div class="container">
+      <div class="section-label-row">
+        <h2 id="featured-heading">Featured</h2>
+        <span>Selected from the publication</span>
+      </div>
       {featured ? (
         <div class="lead-grid">
           <PostCard post={featured} featured={true} />
-          <div class="lead-side">
-            {secondary.map((post) => <PostCard post={post} compact={true} />)}
-          </div>
+          {secondary.length > 0 && (
+            <div class="lead-side">
+              {secondary.map((post) => <PostCard post={post} compact={true} />)}
+            </div>
+          )}
         </div>
       ) : <div class="empty">Publish your first article from the admin dashboard.</div>}
     </div>
   </section>
 
   {latest.length > 0 && (
-    <section class="section latest-section">
+    <section class="section latest-section" aria-labelledby="latest-heading">
       <div class="container">
-        <div class="section-head"><h2>Latest articles</h2><a href="/articles/">View all</a></div>
+        <div class="section-head">
+          <div>
+            <div class="kicker">Fresh from the desk</div>
+            <h2 id="latest-heading">Latest articles</h2>
+          </div>
+          <a href="/articles/">View all <span aria-hidden="true">→</span></a>
+        </div>
         <div class="latest-grid">{latest.map((post) => <PostCard post={post} />)}</div>
       </div>
     </section>
   )}
 
-  {categoryNames.map((name) => {
+  {categoryNames.slice(0, 4).map((name) => {
     const categoryPosts = posts.filter((post) => post.data.category === name).slice(0, 4);
-    if (!categoryPosts.length) return null;
+    if (categoryPosts.length < 2) return null;
     return (
       <section class="section category-strip">
         <div class="container">
-          <div class="section-head"><h2>{name}</h2><a href={`/category/${slugify(name)}/`}>More {name}</a></div>
+          <div class="section-head">
+            <div><div class="kicker">Topic</div><h2>{name}</h2></div>
+            <a href={`/category/${slugify(name)}/`}>Explore {name} <span aria-hidden="true">→</span></a>
+          </div>
           <div class="category-grid">{categoryPosts.map((post) => <PostCard post={post} compact={true} />)}</div>
         </div>
       </section>
