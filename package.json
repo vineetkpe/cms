@@ -1,6 +1,6 @@
 {
   "name": "cms",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "@astrojs/cloudflare": "^14.3.3",
     "@astrojs/rss": "^4.0.19",
     "astro": "^7.3.5",
-    "jose": "^6.2.12"
+    "jose": "^6.2.12",
+    "rehype-sanitize": "^6.0.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
