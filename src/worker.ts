@@ -8,13 +8,16 @@ export default {
     const contentType = response.headers.get('content-type') || '';
 
     if ((url.pathname === '/admin/editor/' || url.pathname === '/admin/editor') && contentType.includes('text/html')) {
-      return new HTMLRewriter()
-        .on('body', {
-          element(element) {
-            element.append('<script src="/admin-ai.js" defer></script>', { html: true });
-          },
-        })
-        .transform(response);
+      const Rewriter = (globalThis as any).HTMLRewriter;
+      if (Rewriter) {
+        return new Rewriter()
+          .on('body', {
+            element(element: any) {
+              element.append('<script src="/admin-ai.js" defer></script>', { html: true });
+            },
+          })
+          .transform(response);
+      }
     }
 
     return response;
