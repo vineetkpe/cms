@@ -10,6 +10,7 @@ const remaining = posts.filter((post) => post.id !== featured?.id);
 const secondary = remaining.slice(0, 2);
 const latest = remaining.slice(2, 11);
 const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 6);
+const authorCount = new Set(posts.map((post) => post.data.author)).size;
 ---
 <BaseLayout title={site.name} description={site.description}>
   <section class="blog-hero">
@@ -18,8 +19,13 @@ const categoryNames = [...new Set(posts.map((post) => post.data.category))].slic
         <div class="kicker">{site.homepageEyebrow || site.name}</div>
         <h1>{site.tagline}</h1>
         <p>{site.description}</p>
+        <div class="home-proof" aria-label="Publication summary">
+          <span><strong>{posts.length}</strong> published articles</span>
+          <span><strong>{categoryNames.length}</strong> active topics</span>
+          <span><strong>{authorCount}</strong> contributor{authorCount === 1 ? '' : 's'}</span>
+        </div>
       </div>
-      <a class="hero-archive-link" href="/articles/">Browse all articles <span aria-hidden="true">→</span></a>
+      <a class="hero-archive-link" href="/articles/">Explore the archive <span aria-hidden="true">→</span></a>
     </div>
   </section>
 
@@ -32,11 +38,19 @@ const categoryNames = [...new Set(posts.map((post) => post.data.category))].slic
     </nav>
   )}
 
+  <div class="editorial-band">
+    <div class="container editorial-band-inner">
+      <div class="editorial-band-item"><strong>Clear editorial hierarchy</strong><span>Focused pages built for readers first.</span></div>
+      <div class="editorial-band-item"><strong>Fast by default</strong><span>Static-first publishing with no external font dependency.</span></div>
+      <div class="editorial-band-item"><strong>Search-ready structure</strong><span>Canonical URLs, metadata, schema, archives and internal links.</span></div>
+    </div>
+  </div>
+
   <section class="section section-first" aria-labelledby="featured-heading">
     <div class="container">
       <div class="section-label-row">
-        <h2 id="featured-heading">Featured</h2>
-        <span>Selected from the publication</span>
+        <h2 id="featured-heading">Editor’s pick</h2>
+        <span>A strong starting point from the publication</span>
       </div>
       {featured ? (
         <div class="lead-grid">
@@ -56,10 +70,10 @@ const categoryNames = [...new Set(posts.map((post) => post.data.category))].slic
       <div class="container">
         <div class="section-head">
           <div>
-            <div class="kicker">Fresh from the desk</div>
+            <div class="kicker">Recently published</div>
             <h2 id="latest-heading">Latest articles</h2>
           </div>
-          <a href="/articles/">View all <span aria-hidden="true">→</span></a>
+          <a href="/articles/">View full archive <span aria-hidden="true">→</span></a>
         </div>
         <div class="latest-grid">{latest.map((post) => <PostCard post={post} />)}</div>
       </div>
