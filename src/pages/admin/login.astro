@@ -24,7 +24,7 @@ export const prerender = true;
       <button class="button" id="submit" type="submit">Sign in</button>
     </form>
     <div id="message" class="message" aria-live="polite"></div>
-    <div class="note">Passwords are never stored in this public repository. Only salted password hashes are stored in a Cloudflare Worker secret.</div>
+    <div class="note">Plaintext passwords are never stored in the repository. CMS sessions are random, short-lived and stored privately in Cloudflare KV.</div>
   </main>
 <script is:inline>
   const form = document.querySelector('#loginForm');
