@@ -3,13 +3,18 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import site from '../data/site.json';
 import '../styles/global.css';
+import '../styles/editorial.css';
 
 const {
   title = site.name,
   description = site.description,
   canonical,
   image,
+  socialTitle,
+  socialDescription,
+  socialImage,
   noindex = false,
+  nofollow = false,
   schema,
   ogType = 'website',
   author,
@@ -21,12 +26,15 @@ const {
 
 const pageTitle = title === site.name ? title : `${title} | ${site.name}`;
 const canonicalUrl = canonical || new URL(Astro.url.pathname, site.url).toString();
-const selectedImage = image || site.defaultOgImage || '';
+const selectedImage = socialImage || image || site.defaultOgImage || '';
 const ogImage = selectedImage ? new URL(selectedImage, site.url).toString() : undefined;
+const ogTitle = socialTitle || pageTitle;
+const ogDescription = socialDescription || description;
 const socialUrls = Object.values(site.social || {}).filter(Boolean);
 const logo = site.logoUrl ? new URL(site.logoUrl, site.url).toString() : undefined;
 const locale = String(site.language || 'en').replace('-', '_');
 const theme = site.theme || { surfaceColor: '#f6f6f3', radius: 14, maxWidth: 1240 };
+const robots = [noindex ? 'noindex' : 'index', nofollow ? 'nofollow' : 'follow', 'max-image-preview:large', 'max-snippet:-1', 'max-video-preview:-1'].join(',');
 
 const websiteSchema = {
   '@context': 'https://schema.org',
@@ -73,13 +81,13 @@ const jsonLd = JSON.stringify(schemas)
     <meta name="description" content={description} />
     {author && <meta name="author" content={author} />}
     <link rel="canonical" href={canonicalUrl} />
-    <meta name="robots" content={noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'} />
+    <meta name="robots" content={robots} />
     {site.googleSiteVerification && <meta name="google-site-verification" content={site.googleSiteVerification} />}
 
     <meta property="og:type" content={ogType} />
     <meta property="og:locale" content={locale} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={description} />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={ogDescription} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content={site.name} />
     {ogImage && <meta property="og:image" content={ogImage} />}
@@ -91,8 +99,8 @@ const jsonLd = JSON.stringify(schemas)
     {ogType === 'article' && Array.isArray(tags) && tags.map((tag) => <meta property="article:tag" content={tag} />)}
 
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
-    <meta name="twitter:title" content={pageTitle} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={ogDescription} />
     {ogImage && <meta name="twitter:image" content={ogImage} />}
 
     <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />

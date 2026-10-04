@@ -23,15 +23,16 @@ const wordCount = String(post.body || '').trim().split(/\s+/).filter(Boolean).le
 const readTime = Math.max(1, Math.ceil(wordCount / 220));
 const showInlineAd = !post.data.hideAds && wordCount >= 500;
 const showRailAd = !post.data.hideAds && wordCount >= 900;
+const publishedAt = post.data.publishAt || post.data.pubDate;
 
 const articleSchema = {
   '@context': 'https://schema.org',
-  '@type': 'Article',
+  '@type': 'BlogPosting',
   headline: post.data.seoTitle || post.data.title,
   description: post.data.seoDescription || post.data.description,
   image: post.data.featuredImage ? [new URL(post.data.featuredImage, site.url).toString()] : undefined,
-  datePublished: post.data.pubDate.toISOString(),
-  dateModified: (post.data.updatedDate || post.data.pubDate).toISOString(),
+  datePublished: publishedAt.toISOString(),
+  dateModified: (post.data.updatedDate || publishedAt).toISOString(),
   author: { '@type': 'Person', name: post.data.author, url: new URL(`/author/${authorSlug}/`, site.url).toString() },
   publisher: { '@type': 'Organization', name: site.name, url: site.url },
   mainEntityOfPage: canonical,
@@ -66,12 +67,16 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
   description={post.data.seoDescription || post.data.description}
   canonical={canonical}
   image={post.data.featuredImage}
+  socialTitle={post.data.ogTitle}
+  socialDescription={post.data.ogDescription}
+  socialImage={post.data.ogImage}
   noindex={post.data.noindex}
+  nofollow={post.data.nofollow}
   schema={schemas}
   ogType="article"
   author={post.data.author}
-  publishedTime={post.data.pubDate.toISOString()}
-  modifiedTime={(post.data.updatedDate || post.data.pubDate).toISOString()}
+  publishedTime={publishedAt.toISOString()}
+  modifiedTime={(post.data.updatedDate || publishedAt).toISOString()}
   section={post.data.category}
   tags={post.data.tags}
 >
@@ -87,7 +92,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
         <div class="article-meta">
           <span>By <a href={`/author/${authorSlug}/`}>{post.data.author}</a></span>
           <span aria-hidden="true">·</span>
-          <time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</time>
+          <time datetime={publishedAt.toISOString()}>{publishedAt.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</time>
           <span aria-hidden="true">·</span>
           <span>{readTime} min read</span>
           {post.data.updatedDate && <><span aria-hidden="true">·</span><span>Updated {post.data.updatedDate.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</span></>}
@@ -111,6 +116,11 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
           {post.data.faq.map((item) => <details><summary>{item.question}</summary><p>{item.answer}</p></details>)}
         </section>
       )}
+
+      <aside class="article-endnote" aria-label="Editorial information">
+        <strong>About this article</strong>
+        <p>Published by {post.data.author}. This page is part of the {post.data.category} section and may be updated when better information becomes available.</p>
+      </aside>
 
       {post.data.tags.length > 0 && (
         <div class="tag-list" aria-label="Article tags">
@@ -136,4 +146,13 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
       {showRailAd && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" />}
     </aside>
   </div>
+  <script is:inline define:vars={{ slug }}>
+    try {
+      const key = `cms-view:${slug}:${new Date().toISOString().slice(0,10)}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        fetch('/api/view', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slug}), keepalive:true }).catch(()=>{});
+      }
+    } catch {}
+  </script>
 </BaseLayout>

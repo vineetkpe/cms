@@ -13,6 +13,15 @@ function safeOrigin(value: unknown) {
   return new URL(clean).origin;
 }
 
+function cleanExpiryDate(value: unknown) {
+  const raw = text(value, 32);
+  if (!raw) return '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T00:00:00Z`))) {
+    throw new Error('GitHub token expiry must be a valid date.');
+  }
+  return raw;
+}
+
 export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
@@ -88,6 +97,7 @@ export const PUT: APIRoute = async ({ request }) => {
       adsensePublisherId,
       adsenseArticleSlot: text(settings.adsenseArticleSlot, 30).replace(/\D/g, ''),
       adsenseSidebarSlot: text(settings.adsenseSidebarSlot, 30).replace(/\D/g, ''),
+      githubTokenExpiresAt: cleanExpiryDate(settings.githubTokenExpiresAt),
       social: cleanSocial,
       navigation,
     };

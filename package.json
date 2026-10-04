@@ -1,6 +1,6 @@
 {
   "name": "cms",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,8 +16,10 @@
     "@astrojs/cloudflare": "^14.3.3",
     "@astrojs/markdown-remark": "^7.3.1",
     "@astrojs/rss": "^4.0.19",
+    "@toast-ui/editor": "^3.2.2",
     "astro": "^7.3.5",
     "jose": "^6.2.12",
+    "marked": "^16.4.1",
     "rehype-sanitize": "^6.0.0"
   },
   "devDependencies": {
