@@ -16,7 +16,7 @@ const posts = defineCollection({
     featuredImageAlt: z.string().optional(),
     seoTitle: z.string().optional(),
     seoDescription: z.string().optional(),
-    canonical: z.string().url().optional(),
+    canonical: z.url().optional(),
     draft: z.boolean().default(false),
     noindex: z.boolean().default(false)
   })
