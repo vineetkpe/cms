@@ -1,0 +1,38 @@
+{
+  "about": {
+    "title": "About",
+    "description": "About this publication.",
+    "kicker": "Publication",
+    "body": "This publication focuses on useful, clearly written information. Replace this text with your real mission, ownership, editorial team and what readers can expect.\n\n## Our approach\n\nExplain how you research, review and update content so readers understand your standards."
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "How to contact this publication.",
+    "kicker": "Get in touch",
+    "body": "Use this page for editorial questions, corrections, partnerships and general enquiries. Add your preferred contact details before launch."
+  },
+  "editorialPolicy": {
+    "title": "Editorial Policy",
+    "description": "How this publication creates and reviews content.",
+    "kicker": "Standards",
+    "body": "Describe how topics are selected, researched, reviewed and updated. State how corrections are handled and how commercial relationships are kept separate from editorial decisions."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "description": "Privacy information for this website.",
+    "kicker": "Legal",
+    "body": "Replace this starter text with a privacy policy that accurately reflects the analytics, advertising, cookies, forms and third-party services you actually use."
+  },
+  "terms": {
+    "title": "Terms of Use",
+    "description": "Terms for using this website.",
+    "kicker": "Legal",
+    "body": "Replace this starter text with terms appropriate for your publication, jurisdiction and services before launch."
+  },
+  "disclaimer": {
+    "title": "Disclaimer",
+    "description": "Important information about this publication.",
+    "kicker": "Legal",
+    "body": "Content is provided for general informational purposes. Replace this starter disclaimer with wording appropriate for the topics you publish and the claims you make."
+  }
+}

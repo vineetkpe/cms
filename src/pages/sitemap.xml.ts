@@ -4,16 +4,19 @@ import site from '../data/site.json';
 
 export const prerender = true;
 type Entry = { loc: string; lastmod?: string };
-const staticPaths = ['/', '/about/', '/contact/', '/editorial-policy/', '/privacy/', '/terms/', '/disclaimer/', '/categories/', '/tags/', '/search/'];
+const staticPaths = ['/', '/about/', '/contact/', '/editorial-policy/', '/privacy/', '/terms/', '/disclaimer/', '/categories/', '/tags/', '/search/', '/articles/'];
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+const perPage = 18;
 
 export const GET: APIRoute = async () => {
   const posts = await getPublishedPosts();
   const categories = [...new Set(posts.map((post) => post.data.category))];
   const tags = [...new Set(posts.flatMap((post) => post.data.tags))];
   const authors = [...new Set(posts.map((post) => post.data.author))];
+  const archivePages = Math.ceil(posts.length / perPage);
   const entries: Entry[] = [
     ...staticPaths.map((path) => ({ loc: new URL(path, site.url).toString() })),
+    ...Array.from({ length: Math.max(0, archivePages - 1) }, (_, i) => ({ loc: new URL(`/articles/${i + 2}/`, site.url).toString() })),
     ...categories.map((name) => ({ loc: new URL(`/category/${slugify(name)}/`, site.url).toString() })),
     ...tags.map((name) => ({ loc: new URL(`/tag/${slugify(name)}/`, site.url).toString() })),
     ...authors.map((name) => ({ loc: new URL(`/author/${slugify(name)}/`, site.url).toString() })),

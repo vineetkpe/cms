@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const { page } = Astro.props;
+const blocks = String(page.body || '').split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean).map((value) => {
+  if (value.startsWith('## ')) return { type: 'h2', text: value.slice(3).trim() };
+  const lines = value.split('\n').map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 0 && lines.every((line) => line.startsWith('- '))) return { type: 'list', items: lines.map((line) => line.slice(2).trim()) };
+  return { type: 'p', text: value };
+});
+---
+<BaseLayout title={page.title} description={page.description}>
+  <div class="container page-wrap">
+    <div class="kicker">{page.kicker}</div>
+    <h1>{page.title}</h1>
+    <div class="managed-copy">
+      {blocks.map((block) => block.type === 'h2' ? <h2>{block.text}</h2> : block.type === 'list' ? <ul>{block.items?.map((item) => <li>{item}</li>)}</ul> : <p>{block.text}</p>)}
+    </div>
+  </div>
+  <style>.managed-copy h2{font-size:1.6rem;margin:2em 0 .55em;letter-spacing:-.03em}.managed-copy p{white-space:pre-line}.managed-copy ul{color:#485365;padding-left:1.3rem}</style>
+</BaseLayout>

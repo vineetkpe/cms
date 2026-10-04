@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPublishedPosts } from '../../lib/posts';
+const perPage = 18;
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  const pages = Math.ceil(posts.length / perPage);
+  return Array.from({ length: Math.max(0, pages - 1) }, (_, index) => {
+    const page = index + 2;
+    return { params: { page: String(page) }, props: { page, pages, posts: posts.slice((page - 1) * perPage, page * perPage) } };
+  });
+}
+const { page, pages, posts } = Astro.props;
+---
+<BaseLayout title={`Articles – Page ${page}`} description={`Browse published articles, page ${page}.`}>
+  <section class="hero"><div class="container hero-copy"><div class="kicker">Archive</div><h1>All articles</h1><p>Page {page} of {pages}.</p></div></section>
+  <section class="section"><div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div><nav class="archive-pagination"><a href={page === 2 ? '/articles/' : `/articles/${page - 1}/`}>← Previous</a><span>Page {page} of {pages}</span>{page < pages ? <a href={`/articles/${page + 1}/`}>Next →</a> : <span></span>}</nav></div></section>
+  <style>.archive-pagination{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-top:38px;padding-top:18px;border-top:1px solid var(--line)}.archive-pagination a{color:var(--accent);font-weight:750}.archive-pagination a:last-child{text-align:right}</style>
+</BaseLayout>

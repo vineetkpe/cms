@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import ManagedPage from '../components/ManagedPage.astro';
+import pages from '../data/pages.json';
 ---
-<BaseLayout title="About" description="About for this publication.">
-  <div class="container page-wrap"><div class="kicker">Publication</div><h1>About</h1><p>This publication focuses on useful, clearly written information. Update this page before launch with your real publication mission, ownership and editorial team.</p></div>
-</BaseLayout>
+<ManagedPage page={pages.about} />
