@@ -5,10 +5,12 @@ import site from '../data/site.json';
 export const prerender = true;
 const staticPaths = ['/', '/about/', '/contact/', '/editorial-policy/', '/privacy/', '/terms/', '/disclaimer/'];
 
+type SitemapEntry = { loc: string; lastmod?: string };
+
 export const GET: APIRoute = async () => {
   const posts = await getPublishedPosts();
   const categories = [...new Set(posts.map((p) => p.data.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')))];
-  const entries = [
+  const entries: SitemapEntry[] = [
     ...staticPaths.map((path) => ({ loc: new URL(path, site.url).toString() })),
     ...categories.map((category) => ({ loc: new URL(`/category/${category}/`, site.url).toString() })),
     ...posts.map((post) => ({ loc: new URL(`/${post.id.replace(/\.md$/, '')}/`, site.url).toString(), lastmod: (post.data.updatedDate || post.data.pubDate).toISOString().slice(0, 10) }))
