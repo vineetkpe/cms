@@ -6,9 +6,23 @@ const posts = await getPublishedPosts();
 const perPage = 18;
 const visible = posts.slice(0, perPage);
 const pages = Math.max(1, Math.ceil(posts.length / perPage));
+const categoryCount = new Set(posts.map((post) => post.data.category)).size;
 ---
-<BaseLayout title="All articles" description="Browse all published articles.">
-  <section class="hero"><div class="container hero-copy"><div class="kicker">Archive</div><h1>All articles</h1><p>Browse the complete publication archive.</p></div></section>
-  <section class="section"><div class="container"><div class="post-grid">{visible.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination"><span>Page 1 of {pages}</span><a href="/articles/2/">Next →</a></nav>}</div></section>
-  <style>.archive-pagination{display:flex;justify-content:space-between;align-items:center;margin-top:38px;padding-top:18px;border-top:1px solid var(--line)}.archive-pagination a{color:var(--accent);font-weight:750}</style>
+<BaseLayout title="All articles" description="Browse the complete publication archive, latest guides and editorial coverage.">
+  <section class="hero">
+    <div class="container hero-copy archive-hero-grid">
+      <div><div class="kicker">Publication archive</div><h1>All articles</h1><p>Browse the complete publication archive, organized for fast discovery and easy reading.</p></div>
+      <div class="archive-summary" aria-label="Archive summary">
+        <div><strong>{posts.length}</strong><span>published articles</span></div>
+        <div><strong>{categoryCount}</strong><span>topics</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="archive-tools"><p>Newest articles appear first.</p><a class="hero-archive-link" href="/search/">Search publication →</a></div>
+      <div class="post-grid">{visible.map((post) => <PostCard post={post} />)}</div>
+      {pages > 1 && <nav class="archive-pagination" aria-label="Article archive pagination"><span>Page 1 of {pages}</span><a href="/articles/2/">Next →</a></nav>}
+    </div>
+  </section>
 </BaseLayout>
