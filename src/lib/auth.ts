@@ -3,6 +3,15 @@ import { bearerToken, getMembership, getSupabaseUser, type CmsRole } from './sup
 
 const ALL_ROLES: CmsRole[] = ['owner', 'admin', 'editor', 'author'];
 
+function cookieValue(request: Request, name: string) {
+  const cookie = request.headers.get('cookie') || '';
+  for (const part of cookie.split(';')) {
+    const [key, ...rest] = part.trim().split('=');
+    if (key === name) return decodeURIComponent(rest.join('='));
+  }
+  return '';
+}
+
 export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = ALL_ROLES) {
   if (getSecret('DEV_ADMIN_BYPASS') === 'true') {
     return {
@@ -15,7 +24,7 @@ export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = A
     };
   }
 
-  const token = bearerToken(request);
+  const token = bearerToken(request) || cookieValue(request, 'cms_access');
   if (!token) return { ok: false as const, status: 401, message: 'Sign in to the CMS.' };
 
   try {
@@ -41,7 +50,7 @@ export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = A
       token,
     };
   } catch {
-    return { ok: false as const, status: 401, message: 'Your CMS session is invalid or expired.' };
+    return { ok: false as const, status: 401, message: 'Your CMS session is invalid or expired. Please sign in again.' };
   }
 }
 
