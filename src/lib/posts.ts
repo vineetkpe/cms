@@ -11,8 +11,12 @@ export function slugify(value: string) {
     .slice(0, 90);
 }
 
+export function publishTime(post: PostEntry) {
+  return (post.data.publishAt || post.data.pubDate).valueOf();
+}
+
 export function isPublished(post: PostEntry, now = Date.now()) {
-  return !post.data.draft && post.data.pubDate.valueOf() <= now;
+  return !post.data.draft && publishTime(post) <= now;
 }
 
 export async function getPublishedPosts() {
@@ -20,7 +24,7 @@ export async function getPublishedPosts() {
   const posts = await getCollection('posts');
   return posts
     .filter((post) => isPublished(post, now))
-    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+    .sort((a, b) => publishTime(b) - publishTime(a));
 }
 
 export function getRelatedPosts(current: PostEntry, posts: PostEntry[], limit = 3) {
@@ -32,7 +36,7 @@ export function getRelatedPosts(current: PostEntry, posts: PostEntry[], limit = 
       const category = post.data.category === current.data.category ? 3 : 0;
       return { post, score: overlap + category };
     })
-    .sort((a, b) => b.score - a.score || b.post.data.pubDate.valueOf() - a.post.data.pubDate.valueOf())
+    .sort((a, b) => b.score - a.score || publishTime(b.post) - publishTime(a.post))
     .slice(0, limit)
     .map(({ post }) => post);
 }
