@@ -1,27 +1,47 @@
 # Astro CMS for Cloudflare
 
-A static-first blog CMS: **Astro + GitHub + Cloudflare Workers**. Public articles are pre-rendered to static HTML. Only the private admin API runs dynamically.
+A static-first multi-author publishing system using **Astro + Supabase + GitHub + Cloudflare Workers**.
 
-## Why D1 is intentionally not in v1
+Normal readers receive pre-rendered HTML from Cloudflare. Supabase is used for CMS authentication, roles, drafts, content state, settings, media metadata and audit data. GitHub remains the versioned static publishing mirror that triggers Astro builds.
 
-For a single-editor blog, D1 adds another state store, migrations, backup logic and runtime limits without solving a problem we have yet. GitHub already provides versioned published content, rollback, audit history and a deployment trigger. Add D1 later only if you need multi-user workflows, scheduled jobs, comments or large amounts of mutable application data.
+## Architecture
+
+- **Astro** — static public site
+- **Cloudflare Workers / Static Assets** — hosting and private admin API
+- **Supabase Auth** — email/password login for CMS users
+- **Supabase Postgres** — CMS data and multi-author roles
+- **GitHub** — published Markdown/media mirror and deployment trigger
+
+## CMS roles
+
+The database supports:
+
+- `owner` — full CMS access
+- `admin` — site/admin management
+- `editor` — content, pages, redirects and editorial operations
+- `author` — create/edit own content and upload media
+
+All CMS tables have Row Level Security enabled. Anonymous access is revoked. The browser never receives a Supabase service-role/secret key.
 
 ## Included
 
-- Static Astro homepage, article pages and categories
-- Responsive custom design with minimal client JavaScript
-- Markdown content collection with schema validation
-- `/admin/` dashboard with create/edit/delete, encrypted drafts and publishing
-- Client-side image resizing/WebP compression before upload
-- GitHub-backed media and content publishing
-- SEO title, description, canonical, noindex and Article schema
-- Sitemap, RSS, robots.txt, search index and 404
-- About, contact, editorial policy, privacy, terms and disclaimer starters
-- Cloudflare Access JWT validation for admin APIs
+- Content-first Astro homepage and article pages
+- Categories, tags, authors and related posts
+- Responsive editorial design with minimal public JavaScript
+- `/admin/login/` Supabase email/password login
+- `/admin/` control center
+- Post editor with drafts, publishing, scheduling fields, FAQ, SEO and featured content
+- Supabase-backed private drafts and post state
+- GitHub mirror for published Markdown
+- Media library with Supabase metadata + GitHub-hosted optimized images
+- Editable About, Contact, Editorial Policy, Privacy, Terms and Disclaimer pages
+- Redirect manager
+- Site settings, analytics/Search Console/AdSense configuration
+- Sitemap, RSS, robots.txt, search and structured data
+- Audit log table
 - GitHub Actions build/deploy workflow
-- No React, database, PHP, jQuery or UI framework
 
-## Local setup
+## Local development
 
 ```bash
 npm install
@@ -29,90 +49,78 @@ cp .dev.vars.example .dev.vars
 npm run dev
 ```
 
-For local admin testing, `.dev.vars` can contain `DEV_ADMIN_BYPASS=true` and a fine-grained GitHub token. Never commit `.dev.vars`.
+For local-only testing you may set:
 
-## Required one-time production setup
+```bash
+DEV_ADMIN_BYPASS=true
+```
 
-### 1. GitHub token for the CMS
+Never enable that value in production.
 
-Create a **fine-grained GitHub token** restricted to this repository with only **Contents: Read and write**. Add it to the Cloudflare Worker as a secret:
+## Production secrets
+
+The CMS still requires a fine-grained GitHub token because publishing writes the final static article/media files back to this repository.
+
+Add this as a Cloudflare Worker secret:
 
 ```bash
 npx wrangler secret put CMS_GITHUB_TOKEN
 ```
 
-Do not expose this token to the browser or commit it to GitHub.
+The token should be restricted to this repository with only the permissions required to read/write repository contents.
 
-### 2. Optional stable draft encryption key
+The Supabase project URL and publishable key are public client values and are safe to ship to the browser. Never expose a Supabase secret/service-role key.
 
-Draft text and metadata are encrypted before being committed to this public repository. By default the CMS derives the encryption key from `CMS_GITHUB_TOKEN`. For a key that remains stable when the GitHub token is rotated, create a long random secret and add:
+## Cloudflare deployment
 
-```bash
-npx wrangler secret put CMS_DRAFT_KEY
-```
-
-Keep this value backed up securely. Losing both the active key and the previous key makes existing encrypted drafts unreadable. Uploaded images are stored in `public/uploads/` and are not treated as private draft data.
-
-### 3. Cloudflare Access
-
-Protect these paths with a Cloudflare Access self-hosted application:
-
-- `/admin/*`
-- `/api/admin/*`
-
-Allow only your admin email/account. Then add the Access values as Worker secrets:
-
-```bash
-npx wrangler secret put CF_ACCESS_TEAM_DOMAIN
-npx wrangler secret put CF_ACCESS_AUD
-```
-
-`CF_ACCESS_TEAM_DOMAIN` should look like `https://your-team.cloudflareaccess.com`.
-
-The API validates the Access JWT with Cloudflare's JWKS, so a forged request header is not enough.
-
-### 4. Cloudflare deployment
-
-Add repository Actions secrets:
+The GitHub Actions workflow expects repository Actions secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-The API token should have only the permissions needed to deploy this Worker.
-
-Pushes to `main` build, type-check and deploy. Commits that only update encrypted draft files are ignored by the build workflow. Pull requests build and type-check.
-
-### 5. Production URL
-
-Before launch, update the site URL from `/admin/` → Site settings.
-
-Also replace all legal-policy starter copy with text accurate for your actual site, analytics and advertising setup.
+Pushes to `main` run the Astro checks/build and deploy when those Cloudflare values are available.
 
 ## Publishing flow
 
-1. Sign in through Cloudflare Access at `/admin/`.
-2. Write the article and save as draft or publish.
-3. **Save draft:** the Worker encrypts the article with AES-GCM, stores it under an opaque HMAC-derived filename in `.cms/drafts/`, and does not expose its title/body in the repository.
-4. **Publish:** the Worker writes normal Markdown to `src/content/posts/`, removes the encrypted draft and GitHub triggers a new static build.
-5. Cloudflare serves the new static HTML.
+1. Author signs in at `/admin/login/` using Supabase Auth.
+2. The Worker validates the Supabase session and checks `cms_members` for the user's role.
+3. Drafts are stored in Supabase and are not committed to the public GitHub repository.
+4. Publishing stores the final CMS record in Supabase and mirrors Markdown to `src/content/posts/`.
+5. GitHub triggers the Cloudflare build.
+6. Astro generates static pages and Cloudflare serves them globally.
 
-Drafts are never loaded by Astro's public content collection and therefore cannot appear in public pages, category listings, search, RSS or sitemap.
+## Database
 
-## Media
+CMS-specific tables are prefixed with `cms_` so the existing Supabase project's other application tables are left untouched.
 
-v1 stores optimized images in `public/uploads/` so the complete CMS works without creating another Cloudflare resource. The browser converts uploads to WebP and limits their size first. R2 can replace this later without changing the public content model.
+Current CMS tables:
 
-## Security rules
+- `cms_members`
+- `cms_posts`
+- `cms_pages`
+- `cms_settings`
+- `cms_redirects`
+- `cms_media`
+- `cms_audit_log`
 
-- Admin API is never authenticated by a custom browser-stored password.
-- Production admin requests require a valid Cloudflare Access JWT.
-- GitHub write token exists only as a Worker secret.
-- Draft article text/metadata is encrypted at rest in the public repository.
-- Uploaded files are limited to image MIME types and size.
-- Slugs are normalized before being used as repository paths.
-- Dangerous script/event-handler markup is rejected by the publishing endpoint.
-- `DEV_ADMIN_BYPASS` is for local development only and must never be set in production.
+Schema files are stored under `supabase/` for reproducibility.
 
-## Performance model
+## Security
 
-Normal visitors receive pre-rendered files. They do not invoke the admin API, GitHub API or a database. Astro's Cloudflare adapter is configured without runtime image processing or sessions, avoiding unnecessary Images/KV bindings in v1.
+- Supabase Auth handles passwords; the CMS never stores raw passwords.
+- All CMS database tables use RLS.
+- Anonymous database access is revoked.
+- Roles are checked server-side and again through database policies.
+- GitHub write credentials stay only in Worker secrets.
+- Admin session cookies are `HttpOnly`, `Secure` and `SameSite=Strict`.
+- Public visitors do not query Supabase or GitHub.
+- Uploaded media is limited by MIME type and size.
+- `DEV_ADMIN_BYPASS` is development-only.
+
+## Before launch
+
+- Select the first Supabase Auth user to become the CMS `owner`.
+- Add each additional author/editor to `cms_members` with the correct role.
+- Replace starter legal/trust-page copy with accurate business information.
+- Set the production domain in Site Settings.
+- Configure Analytics/Search Console/AdSense only when ready.
