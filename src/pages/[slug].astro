@@ -27,7 +27,7 @@ const publishedAt = post.data.publishAt || post.data.pubDate;
 
 const articleSchema = {
   '@context': 'https://schema.org',
-  '@type': 'Article',
+  '@type': 'BlogPosting',
   headline: post.data.seoTitle || post.data.title,
   description: post.data.seoDescription || post.data.description,
   image: post.data.featuredImage ? [new URL(post.data.featuredImage, site.url).toString()] : undefined,
@@ -117,6 +117,11 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
         </section>
       )}
 
+      <aside class="article-endnote" aria-label="Editorial information">
+        <strong>About this article</strong>
+        <p>Published by {post.data.author}. This page is part of the {post.data.category} section and may be updated when better information becomes available.</p>
+      </aside>
+
       {post.data.tags.length > 0 && (
         <div class="tag-list" aria-label="Article tags">
           {post.data.tags.map((tag) => <a href={`/tag/${slugify(tag)}/`}>{tag}</a>)}
@@ -141,4 +146,13 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
       {showRailAd && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" />}
     </aside>
   </div>
+  <script is:inline define:vars={{ slug }}>
+    try {
+      const key = `cms-view:${slug}:${new Date().toISOString().slice(0,10)}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        fetch('/api/view', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slug}), keepalive:true }).catch(()=>{});
+      }
+    } catch {}
+  </script>
 </BaseLayout>
