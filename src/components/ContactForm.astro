@@ -1,0 +1,48 @@
+<section class="contact-form-wrap" aria-labelledby="contact-form-title">
+  <div class="kicker">Message us</div>
+  <h2 id="contact-form-title">Send a message</h2>
+  <form class="contact-form" data-contact-form>
+    <div class="contact-grid">
+      <label>Name<input name="name" autocomplete="name" minlength="2" maxlength="100" required /></label>
+      <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required /></label>
+    </div>
+    <label>Subject<input name="subject" minlength="2" maxlength="160" required /></label>
+    <label>Message<textarea name="message" rows="7" minlength="5" maxlength="5000" required></textarea></label>
+    <label class="form-trap" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off" /></label>
+    <div class="contact-submit"><button type="submit">Send message</button><span data-contact-status role="status"></span></div>
+  </form>
+</section>
+
+<script is:inline>
+  document.querySelectorAll('[data-contact-form]').forEach((form) => {
+    if (!(form instanceof HTMLFormElement)) return;
+    const status = form.querySelector('[data-contact-status]');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      if (button instanceof HTMLButtonElement) button.disabled = true;
+      if (status instanceof HTMLElement) status.textContent = 'Sending…';
+      const data = new FormData(form);
+      try {
+        const response = await fetch('/api/contact', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ name:data.get('name'), email:data.get('email'), subject:data.get('subject'), message:data.get('message'), company:data.get('company') }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Unable to send message.');
+        form.reset();
+        if (status instanceof HTMLElement) status.textContent = payload.message || 'Message sent.';
+      } catch (error) {
+        if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : 'Unable to send message.';
+      } finally {
+        if (button instanceof HTMLButtonElement) button.disabled = false;
+      }
+    });
+  });
+</script>
+
+<style>
+  .contact-form-wrap{margin-top:44px;padding-top:34px;border-top:1px solid var(--line)}.contact-form-wrap h2{font-size:1.7rem;letter-spacing:-.035em;margin:5px 0 20px}.contact-form{display:grid;gap:15px}.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.contact-form label{display:grid;gap:7px;font-size:.83rem;font-weight:750}.contact-form input,.contact-form textarea{width:100%;padding:11px 12px;border:1px solid #cfd4da;border-radius:9px;background:#fff;color:var(--text)}.contact-form input:focus,.contact-form textarea:focus{outline:2px solid color-mix(in srgb,var(--accent) 28%,transparent);border-color:var(--accent)}.contact-submit{display:flex;align-items:center;gap:14px}.contact-submit button{border:0;border-radius:9px;background:var(--text);color:#fff;font-weight:750;padding:11px 16px;cursor:pointer}.contact-submit button:disabled{opacity:.55;cursor:wait}.contact-submit span{font-size:.84rem;color:var(--muted)}.form-trap{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}@media(max-width:620px){.contact-grid{grid-template-columns:1fr}.contact-submit{align-items:flex-start;flex-direction:column}}
+</style>
