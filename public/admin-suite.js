@@ -11,12 +11,13 @@
       ['Media','/admin/media/','Im'],
       ['Pages & SEO','/admin/pages/','Pg'],
       ['Tools & backups','/admin/tools/','↕'],
+      ['Connections','/admin/connections/','Cn'],
       ['Settings','/admin/settings/','St'],
     ];
     const here = location.pathname.replace(/\/+$/,'/') || '/';
     const navHtml = items.map(([label,href,ico]) => {
       const target = href.replace(/\/+$/,'/') || '/';
-      const active = here === target || (href === '/admin/content/' && location.hash === '#redirects');
+      const active = here === target;
       return `<a href="${href}" class="${active?'active':''}"><span class="cms-nav-ico">${ico}</span><span>${label}</span></a>`;
     }).join('');
 
