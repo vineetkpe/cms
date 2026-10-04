@@ -1,0 +1,16 @@
+{
+  "name": "SiteName",
+  "tagline": "Useful information, without the noise.",
+  "description": "A fast, independent publication built for useful articles and guides.",
+  "url": "https://example.com",
+  "email": "hello@example.com",
+  "logoText": "SiteName",
+  "primaryColor": "#1769e0",
+  "author": "Editorial Team",
+  "navigation": [
+    { "label": "Home", "href": "/" },
+    { "label": "Guides", "href": "/category/guides/" },
+    { "label": "News", "href": "/category/news/" },
+    { "label": "About", "href": "/about/" }
+  ]
+}

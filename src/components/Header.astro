@@ -1,0 +1,29 @@
+---
+import site from '../data/site.json';
+---
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="/" aria-label={`${site.name} home`}>{site.logoText || site.name}</a>
+    <nav class="desktop-nav" aria-label="Primary navigation">
+      {site.navigation.map((item) => <a href={item.href}>{item.label}</a>)}
+    </nav>
+    <div class="header-actions">
+      <a class="search-link" href="/search/" aria-label="Search site">Search</a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-nav">Menu</button>
+    </div>
+  </div>
+  <nav id="mobile-nav" class="mobile-nav container" aria-label="Mobile navigation" hidden>
+    {site.navigation.map((item) => <a href={item.href}>{item.label}</a>)}
+    <a href="/search/">Search</a>
+  </nav>
+</header>
+<script is:inline>
+  const button = document.querySelector('.menu-button');
+  const nav = document.querySelector('#mobile-nav');
+  button?.addEventListener('click', () => {
+    if (!(nav instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return;
+    const isOpen = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', String(!isOpen));
+    nav.hidden = isOpen;
+  });
+</script>

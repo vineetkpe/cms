@@ -1,0 +1,7 @@
+# Local development only. Never commit real secrets.
+DEV_ADMIN_BYPASS=true
+CMS_GITHUB_TOKEN=github_fine_grained_token_here
+CMS_GITHUB_REPO=vineetkpe/cms
+CMS_GITHUB_BRANCH=main
+CF_ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+CF_ACCESS_AUD=your-access-audience-tag

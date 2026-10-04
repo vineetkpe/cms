@@ -1,0 +1,17 @@
+---
+const { post, featured = false } = Astro.props;
+const href = `/${post.id.replace(/\.md$/, '')}/`;
+---
+<article class:list={['post-card', { featured }] }>
+  {post.data.featuredImage && (
+    <a href={href} class="post-image-wrap" tabindex="-1" aria-hidden="true">
+      <img class="post-image" src={post.data.featuredImage} alt="" width="720" height="405" loading={featured ? 'eager' : 'lazy'} decoding="async" />
+    </a>
+  )}
+  <div class="post-card-body">
+    <a class="eyebrow" href={`/category/${post.data.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`}>{post.data.category}</a>
+    <h2><a href={href}>{post.data.title}</a></h2>
+    <p>{post.data.description}</p>
+    <div class="post-meta">{post.data.author} · {post.data.pubDate.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })}</div>
+  </div>
+</article>

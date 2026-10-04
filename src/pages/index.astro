@@ -1,0 +1,30 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { getPublishedPosts } from '../lib/posts';
+import site from '../data/site.json';
+
+const posts = await getPublishedPosts();
+const featured = posts[0];
+const rest = posts.slice(1, 7);
+---
+<BaseLayout title={site.name} description={site.description}>
+  <section class="hero">
+    <div class="container hero-copy">
+      <div class="kicker">Independent publication</div>
+      <h1>{site.tagline}</h1>
+      <p>{site.description}</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      {featured ? <PostCard post={featured} featured={true} /> : <div class="empty">Publish your first article from the admin dashboard.</div>}
+      {rest.length > 0 && (
+        <>
+          <div class="section-head"><h2>Latest articles</h2><a href="/search/">Browse all</a></div>
+          <div class="post-grid">{rest.map((post) => <PostCard post={post} />)}</div>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>

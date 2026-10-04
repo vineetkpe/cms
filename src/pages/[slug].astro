@@ -1,0 +1,42 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import site from '../data/site.json';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.id.replace(/\.md$/, '') }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const canonical = post.data.canonical || new URL(`/${post.id.replace(/\.md$/, '')}/`, site.url).toString();
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.data.seoTitle || post.data.title,
+  description: post.data.seoDescription || post.data.description,
+  image: post.data.featuredImage ? [new URL(post.data.featuredImage, site.url).toString()] : undefined,
+  datePublished: post.data.pubDate.toISOString(),
+  dateModified: (post.data.updatedDate || post.data.pubDate).toISOString(),
+  author: { '@type': 'Person', name: post.data.author },
+  publisher: { '@type': 'Organization', name: site.name, url: site.url },
+  mainEntityOfPage: canonical
+};
+---
+<BaseLayout title={post.data.seoTitle || post.data.title} description={post.data.seoDescription || post.data.description} canonical={canonical} image={post.data.featuredImage} noindex={post.data.noindex} schema={schema}>
+  <div class="container article-shell">
+    <article>
+      <header class="article-header">
+        <div class="breadcrumbs"><a href="/">Home</a> / <a href={`/category/${post.data.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`}>{post.data.category}</a></div>
+        <div class="eyebrow">{post.data.category}</div>
+        <h1>{post.data.title}</h1>
+        <p class="article-deck">{post.data.description}</p>
+        <div class="article-meta">By {post.data.author} · {post.data.pubDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}{post.data.updatedDate && ` · Updated ${post.data.updatedDate.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}`}</div>
+      </header>
+      {post.data.featuredImage && <figure class="hero-image"><img src={post.data.featuredImage} alt={post.data.featuredImageAlt || ''} width="1200" height="675" fetchpriority="high" decoding="async" /></figure>}
+      <div class="article-content"><Content /></div>
+    </article>
+    {headings.length > 0 && <aside class="toc" aria-label="Table of contents"><strong>On this page</strong>{headings.filter((h) => h.depth <= 3).map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}</aside>}
+  </div>
+</BaseLayout>
