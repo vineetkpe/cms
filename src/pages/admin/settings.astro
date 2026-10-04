@@ -9,7 +9,7 @@ export const prerender = true;
   <meta name="robots" content="noindex,nofollow" />
   <title>Site Settings</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#111827;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{width:min(calc(100% - 32px),1040px);margin:0 auto;padding:38px 0 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}.top h1{margin:0;font-size:2rem}.back{color:#1769e0;text-decoration:none;font-weight:700}.panel{background:#fff;border:1px solid #e2e7ee;border-radius:14px;padding:22px;margin-bottom:18px}.panel h2{margin:0 0 18px;font-size:1.08rem}.field{display:grid;gap:6px;margin-bottom:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}label{font-size:.84rem;font-weight:750}input,textarea{font:inherit;width:100%;padding:10px 11px;border:1px solid #d0d5dd;border-radius:8px}textarea{min-height:92px;line-height:1.5}.hint{font-size:.79rem;color:#667085}.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.button{border:1px solid #d0d5dd;background:#fff;border-radius:8px;padding:10px 14px;font-weight:750;cursor:pointer;text-decoration:none;color:#111827;display:inline-flex;align-items:center}.primary{background:#1769e0;color:#fff;border-color:#1769e0}.msg{margin-bottom:14px;padding:10px 12px;border-radius:8px;display:none}.msg.show{display:block}.ok{background:#ecfdf3;color:#027a48}.err{background:#fef3f2;color:#b42318}.integration{border:1px solid #d0d5dd;border-radius:12px;padding:16px;background:#fafafa}.integration strong{display:block;margin-bottom:4px}.statusline{font-size:.9rem;font-weight:750;margin-top:8px}.statusline.ok{color:#027a48;background:transparent}.statusline.warn{color:#b54708}.statusline.danger{color:#b42318}@media(max-width:720px){.grid,.three{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+    *{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#111827;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{width:min(calc(100% - 32px),1040px);margin:0 auto;padding:38px 0 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}.top h1{margin:0;font-size:2rem}.back{color:#1769e0;text-decoration:none;font-weight:700}.panel{background:#fff;border:1px solid #e2e7ee;border-radius:14px;padding:22px;margin-bottom:18px}.panel h2{margin:0 0 8px;font-size:1.08rem}.panel>p{margin:0 0 18px;color:#667085;font-size:.84rem}.field{display:grid;gap:6px;margin-bottom:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}label{font-size:.84rem;font-weight:750}input,textarea{font:inherit;width:100%;padding:10px 11px;border:1px solid #d0d5dd;border-radius:8px}textarea{min-height:92px;line-height:1.5}.hint{font-size:.79rem;color:#667085}.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.button{border:1px solid #d0d5dd;background:#fff;border-radius:8px;padding:10px 14px;font-weight:750;cursor:pointer;text-decoration:none;color:#111827;display:inline-flex;align-items:center}.primary{background:#1769e0;color:#fff;border-color:#1769e0}.msg{margin-bottom:14px;padding:10px 12px;border-radius:8px;display:none}.msg.show{display:block}.ok{background:#ecfdf3;color:#027a48}.err{background:#fef3f2;color:#b42318}.integration{border:1px solid #d0d5dd;border-radius:12px;padding:16px;background:#fafafa}.integration strong{display:block;margin-bottom:4px}.statusline{font-size:.9rem;font-weight:750;margin-top:8px}.statusline.ok{color:#027a48;background:transparent}.statusline.warn{color:#b54708}.statusline.danger{color:#b42318}.trendbox{border:1px solid #e9d7fe;background:#fbf8ff;border-radius:12px;padding:16px}.trendbox strong{display:block;color:#6941c6;margin-bottom:5px}@media(max-width:720px){.grid,.three{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
   </style>
 </head>
 <body>
@@ -50,6 +50,14 @@ export const prerender = true;
       </div>
     </section>
 
+    <section class="panel"><h2>Trend intelligence</h2><p>Controls the Google Trends feed and AI topic recommendations shown on your dashboard.</p>
+      <div class="trendbox">
+        <strong>Content niche</strong>
+        <div class="field"><label>Describe the site niche</label><textarea id="contentNiche" maxlength="320" placeholder="Jobs, careers, government jobs, recruitment, exams..."></textarea><div class="hint">Be specific. The CMS uses this to reject unrelated trending topics.</div></div>
+        <div class="grid"><div class="field"><label>Google Trends country code</label><input id="trendGeo" maxlength="2" placeholder="IN"><div class="hint">Examples: IN, US, GB, CA.</div></div><div class="field"><label>Niche keywords</label><input id="trendKeywords" placeholder="jobs, recruitment, exam, result"><div class="hint">Comma-separated. Up to 40 terms.</div></div></div>
+      </div>
+    </section>
+
     <section class="panel"><h2>Social profiles</h2>
       <div class="grid"><div class="field"><label>X / Twitter</label><input id="socialX" type="url"></div><div class="field"><label>LinkedIn</label><input id="socialLinkedin" type="url"></div><div class="field"><label>Instagram</label><input id="socialInstagram" type="url"></div><div class="field"><label>YouTube</label><input id="socialYoutube" type="url"></div></div>
     </section>
@@ -81,6 +89,7 @@ export const prerender = true;
     $('navigation').value = (settings.navigation || []).map((i) => `${i.label}|${i.href}`).join('\n'); $('footerText').value = settings.footerText || ''; $('email').value = settings.email || ''; $('author').value = settings.author || '';
     $('url').value = settings.url || ''; $('language').value = settings.language || 'en'; $('defaultOgImage').value = settings.defaultOgImage || ''; $('googleAnalyticsId').value = settings.googleAnalyticsId || ''; $('googleSiteVerification').value = settings.googleSiteVerification || ''; $('adsensePublisherId').value = settings.adsensePublisherId || ''; $('adsenseArticleSlot').value = settings.adsenseArticleSlot || ''; $('adsenseSidebarSlot').value = settings.adsenseSidebarSlot || '';
     $('githubTokenExpiresAt').value = settings.githubTokenExpiresAt || ''; updateGithubTokenStatus();
+    $('contentNiche').value = settings.contentNiche || ''; $('trendGeo').value = settings.trendGeo || 'IN'; $('trendKeywords').value = Array.isArray(settings.trendKeywords) ? settings.trendKeywords.join(', ') : '';
     $('socialX').value = s.x || ''; $('socialLinkedin').value = s.linkedin || ''; $('socialInstagram').value = s.instagram || ''; $('socialYoutube').value = s.youtube || '';
   }
   function capture() {
@@ -91,6 +100,7 @@ export const prerender = true;
       footerText: $('footerText').value, email: $('email').value, author: $('author').value, url: $('url').value, language: $('language').value, defaultOgImage: $('defaultOgImage').value,
       googleAnalyticsId: $('googleAnalyticsId').value, googleSiteVerification: $('googleSiteVerification').value, adsensePublisherId: $('adsensePublisherId').value, adsenseArticleSlot: $('adsenseArticleSlot').value, adsenseSidebarSlot: $('adsenseSidebarSlot').value,
       githubTokenExpiresAt: $('githubTokenExpiresAt').value,
+      contentNiche: $('contentNiche').value, trendGeo: $('trendGeo').value, trendKeywords: $('trendKeywords').value.split(',').map((x) => x.trim()).filter(Boolean),
       social: { x: $('socialX').value, linkedin: $('socialLinkedin').value, instagram: $('socialInstagram').value, youtube: $('socialYoutube').value }
     };
   }
