@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import ManagedPage from '../components/ManagedPage.astro';
+import pages from '../data/pages.json';
 ---
-<BaseLayout title="Privacy Policy" description="Privacy Policy for this publication.">
-  <div class="container page-wrap"><div class="kicker">Publication</div><h1>Privacy Policy</h1><p>Replace this starter text with a privacy policy that accurately describes the analytics, advertising, cookies, forms and third-party services you actually use before collecting visitor data or enabling advertising.</p></div>
-</BaseLayout>
+<ManagedPage page={pages.privacy} />

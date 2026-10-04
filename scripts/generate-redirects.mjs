@@ -1,6 +1,5 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
-const root = new URL('../', import.meta.url);
 const publicDir = new URL('../public/', import.meta.url);
 await mkdir(publicDir, { recursive: true });
 
