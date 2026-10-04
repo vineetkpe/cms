@@ -32,6 +32,29 @@ export async function supabaseRequest(path: string, token: string, init: Request
   return text ? JSON.parse(text) : null;
 }
 
+export async function supabasePublicRpc(name: string, body: Record<string, unknown>) {
+  if (!/^cms_[a-z0-9_]+$/.test(name)) throw new Error('Invalid RPC name.');
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = 'Request could not be completed.';
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed?.message === 'string' && parsed.message.length <= 180) message = parsed.message;
+    } catch {}
+    throw new Error(message);
+  }
+  return text ? JSON.parse(text) : null;
+}
+
 export async function getSupabaseUser(token: string) {
   return supabaseRequest('/auth/v1/user', token, { method: 'GET' });
 }
