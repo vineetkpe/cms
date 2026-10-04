@@ -13,6 +13,9 @@
   "triggers": {
     "crons": ["*/5 * * * *"]
   },
+  "ai": {
+    "binding": "AI"
+  },
   "vars": {
     "CMS_GITHUB_REPO": "vineetkpe/cms",
     "CMS_GITHUB_BRANCH": "main"
