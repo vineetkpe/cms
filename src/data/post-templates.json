@@ -1,0 +1,26 @@
+[
+  {
+    "id": "standard",
+    "name": "Standard article",
+    "description": "Clean editorial structure for most posts.",
+    "body": "## Introduction\n\nStart with a concise introduction that explains what the reader will learn.\n\n## Key points\n\n- Point one\n- Point two\n- Point three\n\n## Details\n\nWrite the main content here.\n\n## Conclusion\n\nSummarize the key takeaway and next step."
+  },
+  {
+    "id": "news",
+    "name": "News update",
+    "description": "Fast structure for timely news and announcements.",
+    "body": "## What happened\n\nState the development clearly.\n\n## Why it matters\n\nExplain the impact and context.\n\n## What happens next\n\nList the next expected developments or dates."
+  },
+  {
+    "id": "how-to",
+    "name": "How-to guide",
+    "description": "Step-by-step tutorial with prerequisites and checks.",
+    "body": "## What you need\n\nList prerequisites before starting.\n\n## Step 1\n\nExplain the first step.\n\n## Step 2\n\nExplain the second step.\n\n## Step 3\n\nExplain the third step.\n\n## Troubleshooting\n\nCover common issues and fixes.\n\n## Final check\n\nExplain how to verify the result."
+  },
+  {
+    "id": "listicle",
+    "name": "List article",
+    "description": "Structured list post with clear criteria.",
+    "body": "## How we chose these options\n\nExplain the selection criteria.\n\n## 1. First item\n\nWhy it is useful, who it is for, and any limitations.\n\n## 2. Second item\n\nWhy it is useful, who it is for, and any limitations.\n\n## 3. Third item\n\nWhy it is useful, who it is for, and any limitations.\n\n## Final recommendation\n\nSummarize how readers should choose."
+  }
+]
