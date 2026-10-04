@@ -19,7 +19,7 @@ export const prerender = true;
     <a class="card" href="/admin/content/"><div class="icon">Aa</div><h2>Posts & SEO</h2><p>Write, schedule and publish posts with metadata, FAQs, images, tags and ad controls.</p></a>
     <a class="card" href="/admin/pages/"><div class="icon">Pg</div><h2>Pages & SEO</h2><p>Edit About, Contact, Privacy, Terms, Disclaimer and Editorial Policy with page-level SEO.</p></a>
     <a class="card admin-only" href="/admin/settings/"><div class="icon">St</div><h2>Appearance & settings</h2><p>Brand, logo, colors, navigation, footer, analytics, Search Console, AdSense and comments.</p></a>
-    <a class="card" href="/admin/comments/"><div class="icon">Cm</div><h2>Comments</h2><p>Approve useful reader discussion, mark spam or remove unwanted comments.</p></a>
+    <a class="card editor-only" href="/admin/comments/"><div class="icon">Cm</div><h2>Comments</h2><p>Approve useful reader discussion, mark spam or remove unwanted comments.</p></a>
     <a class="card admin-only" href="/admin/inbox/"><div class="icon">In</div><h2>Contact inbox</h2><p>Review website contact-form messages without exposing visitor data publicly.</p></a>
     <a class="card" href="/admin/media/"><div class="icon">Im</div><h2>Media library</h2><p>Upload optimized images, browse existing media, copy URLs and manage files.</p></a>
     <a class="card" href="/articles/" target="_blank"><div class="icon">↗</div><h2>Public archive</h2><p>Review the public article archive and published content.</p></a>
@@ -35,6 +35,7 @@ export const prerender = true;
     const role = data.user?.role || 'member';
     if (label instanceof HTMLElement) label.textContent = `${data.user?.displayName || data.user?.email || 'CMS user'} · ${role}`;
     if (!['owner','admin'].includes(role)) document.querySelectorAll('.admin-only').forEach((node) => node.remove());
+    if (!['owner','admin','editor'].includes(role)) document.querySelectorAll('.editor-only').forEach((node) => node.remove());
     if (app instanceof HTMLElement) app.hidden = false;
   }).catch(() => location.replace('/admin/login/'));
   document.querySelector('#logout')?.addEventListener('click', async () => {
