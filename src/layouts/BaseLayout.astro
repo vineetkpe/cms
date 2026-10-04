@@ -54,6 +54,12 @@ const organizationSchema = {
 
 const extraSchemas = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
 const schemas = [websiteSchema, organizationSchema, ...extraSchemas];
+const jsonLd = JSON.stringify(schemas)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
 ---
 <!doctype html>
 <html lang={site.language || 'en'}>
@@ -92,7 +98,7 @@ const schemas = [websiteSchema, organizationSchema, ...extraSchemas];
     <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />
     <meta name="theme-color" content={site.primaryColor} />
     <style is:inline>{`:root{--accent:${site.primaryColor};--surface:${theme.surfaceColor};--radius:${theme.radius}px;--max:${theme.maxWidth}px}`}</style>
-    <script type="application/ld+json" set:html={JSON.stringify(schemas)}></script>
+    <script type="application/ld+json" set:html={jsonLd}></script>
 
     {site.googleAnalyticsId && (
       <>
