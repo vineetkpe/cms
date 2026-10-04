@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Search" description="Search articles on this site." noindex={true}>
+  <div class="container page-wrap">
+    <div class="kicker">Search</div><h1>Find an article</h1>
+    <input id="search" class="search-box" type="search" placeholder="Search titles, categories and topics…" autocomplete="off" />
+    <div id="results" class="search-results" aria-live="polite"></div>
+  </div>
+</BaseLayout>
+<script is:inline>
+  const input = document.querySelector('#search');
+  const results = document.querySelector('#results');
+  let index = [];
+  fetch('/search-index.json').then((r) => r.json()).then((data) => { index = data; });
+  input?.addEventListener('input', () => {
+    if (!(input instanceof HTMLInputElement) || !(results instanceof HTMLElement)) return;
+    const q = input.value.trim().toLowerCase();
+    if (!q) { results.innerHTML = ''; return; }
+    const matches = index.filter((item) => `${item.title} ${item.description} ${item.category} ${(item.tags || []).join(' ')}`.toLowerCase().includes(q)).slice(0, 20);
+    results.replaceChildren(...matches.map((item) => {
+      const a = document.createElement('a'); a.href = item.url; a.className = 'search-result';
+      const h = document.createElement('h2'); h.textContent = item.title;
+      const p = document.createElement('p'); p.textContent = item.description;
+      const e = document.createElement('div'); e.className = 'eyebrow'; e.textContent = item.category;
+      a.append(e, h, p); return a;
+    }));
+  });
+</script>

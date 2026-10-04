@@ -1,0 +1,25 @@
+---
+import site from '../data/site.json';
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <a class="brand footer-brand" href="/">{site.logoText || site.name}</a>
+      <p>{site.description}</p>
+    </div>
+    <div>
+      <strong>Publication</strong>
+      <a href="/about/">About</a>
+      <a href="/editorial-policy/">Editorial policy</a>
+      <a href="/contact/">Contact</a>
+    </div>
+    <div>
+      <strong>Legal</strong>
+      <a href="/privacy/">Privacy</a>
+      <a href="/terms/">Terms</a>
+      <a href="/disclaimer/">Disclaimer</a>
+    </div>
+  </div>
+  <div class="container footer-bottom">© {year} {site.name}. All rights reserved.</div>
+</footer>
