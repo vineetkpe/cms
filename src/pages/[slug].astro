@@ -19,6 +19,11 @@ const slug = post.id.replace(/\.md$/, '');
 const categorySlug = slugify(post.data.category);
 const authorSlug = slugify(post.data.author);
 const canonical = post.data.canonical || new URL(`/${slug}/`, site.url).toString();
+const wordCount = String(post.body || '').trim().split(/\s+/).filter(Boolean).length;
+const readTime = Math.max(1, Math.ceil(wordCount / 220));
+const showInlineAd = !post.data.hideAds && wordCount >= 500;
+const showRailAd = !post.data.hideAds && wordCount >= 900;
+
 const articleSchema = {
   '@context': 'https://schema.org',
   '@type': 'Article',
@@ -29,8 +34,11 @@ const articleSchema = {
   dateModified: (post.data.updatedDate || post.data.pubDate).toISOString(),
   author: { '@type': 'Person', name: post.data.author, url: new URL(`/author/${authorSlug}/`, site.url).toString() },
   publisher: { '@type': 'Organization', name: site.name, url: site.url },
-  mainEntityOfPage: canonical
+  mainEntityOfPage: canonical,
+  wordCount,
+  inLanguage: site.language || 'en'
 };
+
 const breadcrumbSchema = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
@@ -40,6 +48,7 @@ const breadcrumbSchema = {
     { '@type': 'ListItem', position: 3, name: post.data.title, item: canonical }
   ]
 };
+
 const faqSchema = post.data.faq.length ? {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
@@ -49,38 +58,77 @@ const faqSchema = post.data.faq.length ? {
     acceptedAnswer: { '@type': 'Answer', text: item.answer }
   }))
 } : undefined;
+
 const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
 ---
-<BaseLayout title={post.data.seoTitle || post.data.title} description={post.data.seoDescription || post.data.description} canonical={canonical} image={post.data.featuredImage} noindex={post.data.noindex} schema={schemas}>
+<BaseLayout
+  title={post.data.seoTitle || post.data.title}
+  description={post.data.seoDescription || post.data.description}
+  canonical={canonical}
+  image={post.data.featuredImage}
+  noindex={post.data.noindex}
+  schema={schemas}
+  ogType="article"
+>
   <div class="container article-shell">
-    <article>
+    <article class="article-main">
       <header class="article-header">
-        <div class="breadcrumbs"><a href="/">Home</a> / <a href={`/category/${categorySlug}/`}>{post.data.category}</a></div>
-        <div class="eyebrow">{post.data.category}</div>
+        <nav class="breadcrumbs" aria-label="Breadcrumb">
+          <a href="/">Home</a><span aria-hidden="true">/</span><a href={`/category/${categorySlug}/`}>{post.data.category}</a>
+        </nav>
+        <a class="eyebrow" href={`/category/${categorySlug}/`}>{post.data.category}</a>
         <h1>{post.data.title}</h1>
         <p class="article-deck">{post.data.description}</p>
-        <div class="article-meta">By <a href={`/author/${authorSlug}/`}>{post.data.author}</a> · {post.data.pubDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}{post.data.updatedDate && ` · Updated ${post.data.updatedDate.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}`}</div>
+        <div class="article-meta">
+          <span>By <a href={`/author/${authorSlug}/`}>{post.data.author}</a></span>
+          <span aria-hidden="true">·</span>
+          <time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}</time>
+          <span aria-hidden="true">·</span>
+          <span>{readTime} min read</span>
+          {post.data.updatedDate && <><span aria-hidden="true">·</span><span>Updated {post.data.updatedDate.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</span></>}
+        </div>
       </header>
-      {post.data.featuredImage && <figure class="hero-image"><img src={post.data.featuredImage} alt={post.data.featuredImageAlt || post.data.title} width="1200" height="675" fetchpriority="high" decoding="async" /></figure>}
-      {!post.data.hideAds && <AdSlot slot={site.adsenseArticleSlot} />}
+
+      {post.data.featuredImage && (
+        <figure class="hero-image">
+          <img src={post.data.featuredImage} alt={post.data.featuredImageAlt || post.data.title} width="1200" height="675" fetchpriority="high" decoding="async" />
+        </figure>
+      )}
+
       <div class="article-content"><Content /></div>
+
+      {showInlineAd && <AdSlot slot={site.adsenseArticleSlot} />}
+
       {post.data.faq.length > 0 && (
         <section class="faq-section" aria-labelledby="faq-title">
+          <div class="kicker">Quick answers</div>
           <h2 id="faq-title">Frequently asked questions</h2>
           {post.data.faq.map((item) => <details><summary>{item.question}</summary><p>{item.answer}</p></details>)}
         </section>
       )}
-      {post.data.tags.length > 0 && <div class="tag-list" aria-label="Article tags">{post.data.tags.map((tag) => <a href={`/tag/${slugify(tag)}/`}>{tag}</a>)}</div>}
+
+      {post.data.tags.length > 0 && (
+        <div class="tag-list" aria-label="Article tags">
+          {post.data.tags.map((tag) => <a href={`/tag/${slugify(tag)}/`}>{tag}</a>)}
+        </div>
+      )}
+
       {related.length > 0 && (
-        <section class="related-posts">
-          <div class="section-head"><h2>Related articles</h2></div>
+        <section class="related-posts" aria-labelledby="related-title">
+          <div class="section-head"><div><div class="kicker">Keep reading</div><h2 id="related-title">Related articles</h2></div></div>
           <div class="post-grid">{related.map((item) => <PostCard post={item} />)}</div>
         </section>
       )}
     </article>
-    <aside class="article-rail">
-      {headings.length > 0 && <nav class="toc" aria-label="Table of contents"><strong>On this page</strong>{headings.filter((h) => h.depth <= 3).map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}</nav>}
-      {!post.data.hideAds && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" />}
+
+    <aside class="article-rail" aria-label="Article tools">
+      {headings.length > 0 && (
+        <nav class="toc" aria-label="Table of contents">
+          <strong>On this page</strong>
+          {headings.filter((h) => h.depth <= 3).map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
+        </nav>
+      )}
+      {showRailAd && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" />}
     </aside>
   </div>
 </BaseLayout>
