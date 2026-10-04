@@ -1,0 +1,18 @@
+---
+import site from '../data/site.json';
+const { slot = '', format = 'auto', label = 'Advertisement' } = Astro.props;
+const enabled = Boolean(site.adsensePublisherId && slot);
+---
+{enabled && (
+  <div class="ad-slot" aria-label={label}>
+    <span class="ad-label">{label}</span>
+    <ins
+      class="adsbygoogle"
+      style="display:block"
+      data-ad-client={site.adsensePublisherId}
+      data-ad-slot={slot}
+      data-ad-format={format}
+      data-full-width-responsive="true"></ins>
+    <script is:inline>try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(e){}</script>
+  </div>
+)}

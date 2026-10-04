@@ -9,7 +9,9 @@ export const GET: APIRoute = async () => {
     description: post.data.description,
     category: post.data.category,
     tags: post.data.tags,
+    author: post.data.author,
+    date: post.data.pubDate.toISOString(),
     url: `/${post.id.replace(/\.md$/, '')}/`
   }));
-  return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+  return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
 };

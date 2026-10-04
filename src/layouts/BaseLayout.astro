@@ -14,17 +14,32 @@ const {
 } = Astro.props;
 const pageTitle = title === site.name ? title : `${title} | ${site.name}`;
 const canonicalUrl = canonical || new URL(Astro.url.pathname, site.url).toString();
-const ogImage = image ? new URL(image, site.url).toString() : undefined;
-const baseSchema = {
+const selectedImage = image || site.defaultOgImage || '';
+const ogImage = selectedImage ? new URL(selectedImage, site.url).toString() : undefined;
+const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: site.name,
   url: site.url,
-  description: site.description
+  description: site.description,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${site.url}/search/?q={search_term_string}`,
+    'query-input': 'required name=search_term_string'
+  }
 };
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: site.name,
+  url: site.url,
+  email: site.email || undefined
+};
+const extraSchemas = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
+const schemas = [websiteSchema, organizationSchema, ...extraSchemas];
 ---
 <!doctype html>
-<html lang="en">
+<html lang={site.language || 'en'}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -32,19 +47,29 @@ const baseSchema = {
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
-    <meta name="robots" content={noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large'} />
+    <meta name="robots" content={noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'} />
+    {site.googleSiteVerification && <meta name="google-site-verification" content={site.googleSiteVerification} />}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content={site.name} />
     {ogImage && <meta property="og:image" content={ogImage} />}
     <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
     <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />
     <meta name="theme-color" content={site.primaryColor} />
     <style is:inline>{`:root{--accent:${site.primaryColor}}`}</style>
-    <script type="application/ld+json" set:html={JSON.stringify(schema || baseSchema)}></script>
+    <script type="application/ld+json" set:html={JSON.stringify(schemas)}></script>
+    {site.googleAnalyticsId && (
+      <>
+        <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${site.googleAnalyticsId}`}></script>
+        <script is:inline set:html={`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${site.googleAnalyticsId}',{anonymize_ip:true});`}></script>
+      </>
+    )}
+    {site.adsensePublisherId && <script is:inline async crossorigin="anonymous" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${site.adsensePublisherId}`}></script>}
   </head>
   <body>
     <Header />

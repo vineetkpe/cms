@@ -16,6 +16,12 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
   if (!String(input.body || '').trim()) throw new Error('Article body is required.');
   const canonical = String(input.canonical || '').trim();
   if (canonical) new URL(canonical);
+  const pubDate = String(input.pubDate || new Date().toISOString().slice(0, 10));
+  if (Number.isNaN(Date.parse(pubDate))) throw new Error('Publish date is invalid.');
+  const faq = Array.isArray(input.faq) ? input.faq.slice(0, 20).map((item) => ({
+    question: String(item?.question || '').trim().slice(0, 240),
+    answer: String(item?.answer || '').trim().slice(0, 1200)
+  })).filter((item) => item.question && item.answer) : [];
   return {
     slug,
     originalSlug: input.originalSlug ? slugify(String(input.originalSlug)) : undefined,
@@ -24,7 +30,7 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     category: String(input.category || 'Guides').trim().slice(0, 80),
     tags: Array.isArray(input.tags) ? input.tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 20) : [],
     author: String(input.author || 'Editorial Team').trim().slice(0, 100),
-    pubDate: String(input.pubDate || new Date().toISOString().slice(0, 10)),
+    pubDate,
     updatedDate: input.updatedDate ? String(input.updatedDate) : undefined,
     featuredImage: input.featuredImage ? String(input.featuredImage).trim() : undefined,
     featuredImageAlt: input.featuredImageAlt ? String(input.featuredImageAlt).trim().slice(0, 180) : undefined,
@@ -33,6 +39,9 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     canonical: canonical || undefined,
     draft: Boolean(input.draft),
     noindex: Boolean(input.noindex),
+    featured: Boolean(input.featured),
+    hideAds: Boolean(input.hideAds),
+    faq,
     body: String(input.body),
     sha: input.sha ? String(input.sha) : undefined
   };
@@ -69,7 +78,7 @@ export const GET: APIRoute = async ({ request }) => {
         bySlug.set(draft.slug, draft);
       }
     } catch {
-      // Draft directory does not exist until the first draft is saved.
+      // Draft directory is created on first draft save.
     }
 
     const posts = Array.from(bySlug.values());
@@ -91,9 +100,7 @@ export const POST: APIRoute = async ({ request }) => {
       let sha: string | undefined;
       try { sha = (await getTextFile(path)).sha; } catch { /* first save */ }
       const result = await putTextFile(path, await encryptDraft(post), 'Save private CMS draft', sha);
-      if (post.originalSlug && post.originalSlug !== post.slug) {
-        await tryDelete(await draftPath(post.originalSlug), 'Move private CMS draft');
-      }
+      if (post.originalSlug && post.originalSlug !== post.slug) await tryDelete(await draftPath(post.originalSlug), 'Move private CMS draft');
       return Response.json({ ok: true, slug: post.slug, commit: result?.commit?.sha || null });
     }
 

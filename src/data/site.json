@@ -7,6 +7,20 @@
   "logoText": "SiteName",
   "primaryColor": "#1769e0",
   "author": "Editorial Team",
+  "language": "en",
+  "defaultOgImage": "",
+  "footerText": "Independent articles, guides and useful information.",
+  "googleAnalyticsId": "",
+  "googleSiteVerification": "",
+  "adsensePublisherId": "",
+  "adsenseArticleSlot": "",
+  "adsenseSidebarSlot": "",
+  "social": {
+    "x": "",
+    "linkedin": "",
+    "instagram": "",
+    "youtube": ""
+  },
   "navigation": [
     { "label": "Home", "href": "/" },
     { "label": "Guides", "href": "/category/guides/" },
