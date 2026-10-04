@@ -1,0 +1,211 @@
+---
+import '@toast-ui/editor/dist/toastui-editor.css';
+export const prerender = true;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Publishing Studio</title>
+  <style>
+    :root{--bg:#f4f6f9;--panel:#fff;--text:#101828;--muted:#667085;--line:#e3e8ef;--accent:#1769e0;--accent2:#0b57c7;--danger:#b42318;--ok:#027a48;--warn:#b54708}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,textarea,select{font:inherit}.shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}.side{background:#101828;color:#d0d5dd;padding:24px 16px;position:sticky;top:0;height:100vh}.brand{font-weight:850;color:#fff;font-size:1.2rem;padding:0 8px;margin-bottom:24px}.nav{display:grid;gap:3px}.nav a{color:#b7c0ce;text-decoration:none;padding:10px 11px;border-radius:8px}.nav a:hover,.nav a.active{background:#202939;color:#fff}.main{padding:24px 28px 70px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.top h1{margin:0;font-size:1.8rem;letter-spacing:-.035em}.sub{font-size:.84rem;color:var(--muted);margin-top:4px}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#fff;color:#344054;border-radius:8px;padding:9px 13px;font-weight:750;cursor:pointer}.btn:hover{border-color:#aab8cc}.btn.primary{background:var(--accent);border-color:var(--accent);color:white}.btn.primary:hover{background:var(--accent2)}.btn.danger{color:var(--danger)}.btn:disabled{opacity:.55;cursor:wait}.notice{display:none;margin-bottom:15px;padding:11px 13px;border-radius:9px;font-size:.88rem}.notice.show{display:block}.notice.ok{background:#ecfdf3;color:var(--ok)}.notice.err{background:#fef3f2;color:var(--danger)}.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.58fr);gap:18px}.stack{display:grid;gap:16px}.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px;box-shadow:0 4px 18px rgba(16,24,40,.025)}.field{display:grid;gap:6px}.field label,.label{font-size:.82rem;font-weight:760}.field small,.hint{font-size:.77rem;color:var(--muted)}input,textarea,select{width:100%;border:1px solid #d8dee8;border-radius:8px;padding:10px 11px;background:#fff;color:var(--text)}input:focus,textarea:focus,select:focus{outline:2px solid #1769e026;border-color:#1769e0}.title-input{font-size:1.4rem;font-weight:760;padding:12px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.checks{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex;align-items:center;gap:8px;font-size:.83rem}.check input{width:auto}.editor-card{padding:0;overflow:hidden}.editor-head{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}.editor-head strong{font-size:.88rem}.editor-meta{font-size:.76rem;color:var(--muted)}#editor{min-height:560px}.toastui-editor-defaultUI{border:0!important;border-radius:0!important}.toastui-editor-main{min-height:510px}.publish-state{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.pill{border-radius:999px;padding:5px 8px;font-size:.73rem;font-weight:800;background:#f2f4f7;color:#475467}.pill.draft{background:#fff4e5;color:#9a5600}.pill.scheduled{background:#eef4ff;color:#3538cd}.pill.published{background:#ecfdf3;color:#027a48}.metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{border:1px solid var(--line);border-radius:8px;padding:9px;text-align:center}.metric strong{display:block;font-size:1rem}.metric span{font-size:.7rem;color:var(--muted)}.faq-row{display:grid;grid-template-columns:1fr 1.35fr 38px;gap:7px;margin-top:8px}.revision{padding:10px 0;border-top:1px solid var(--line)}.revision:first-child{border-top:0}.revision strong{display:block;font-size:.82rem}.revision small{color:var(--muted)}.post-picker{position:fixed;inset:0;background:rgba(16,24,40,.45);display:none;place-items:center;padding:20px;z-index:20}.post-picker.show{display:grid}.picker-card{background:#fff;width:min(720px,100%);max-height:80vh;overflow:auto;border-radius:14px;border:1px solid var(--line);box-shadow:0 25px 80px rgba(16,24,40,.2)}.picker-head{position:sticky;top:0;background:#fff;padding:15px;border-bottom:1px solid var(--line);display:flex;gap:10px}.picker-list{padding:8px}.post-item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px;border-radius:9px;cursor:pointer}.post-item:hover{background:#f8fafc}.post-item strong{display:block}.post-item small{color:var(--muted)}.media-preview{max-width:100%;max-height:190px;border-radius:8px;margin-top:8px}.autosave{font-size:.76rem;color:var(--muted)}@media(max-width:1020px){.shell{grid-template-columns:1fr}.side{position:static;height:auto;padding:12px}.brand{margin-bottom:8px}.nav{display:flex;overflow:auto}.nav a{white-space:nowrap}.main{padding:18px}.layout{grid-template-columns:1fr}}@media(max-width:650px){.top{align-items:flex-start;flex-direction:column}.grid2,.checks{grid-template-columns:1fr}.faq-row{grid-template-columns:1fr}.metric-row{grid-template-columns:1fr 1fr 1fr}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">CMS Admin</div>
+    <nav class="nav">
+      <a href="/admin/">Dashboard</a>
+      <a class="active" href="/admin/editor/">Publishing Studio</a>
+      <a href="/admin/content/">Posts</a>
+      <a href="/admin/media/">Media</a>
+      <a href="/admin/pages/">Pages</a>
+      <a href="/admin/tools/">Tools & backups</a>
+      <a href="/admin/settings/">Appearance</a>
+      <a href="/" target="_blank">View website ↗</a>
+    </nav>
+  </aside>
+  <main class="main" id="app" hidden>
+    <div class="notice" id="notice"></div>
+    <div class="top">
+      <div><h1 id="pageTitle">New article</h1><div class="sub">Visual + Markdown editor, autosave, scheduling, revisions, SEO and templates.</div></div>
+      <div class="actions"><button class="btn" id="choosePost">Open post</button><button class="btn" id="newPost">New</button><button class="btn" id="preview">Preview</button></div>
+    </div>
+
+    <div class="layout">
+      <section class="stack">
+        <div class="card stack">
+          <div class="field"><label for="title">Title</label><input class="title-input" id="title" maxlength="180" placeholder="Article title" /></div>
+          <div class="grid2"><div class="field"><label for="slug">Slug</label><input id="slug" maxlength="90" /><small>Permanent URL. Keep it stable after indexing.</small></div><div class="field"><label for="template">Content template</label><select id="template"><option value="">Blank article</option></select></div></div>
+          <div class="field"><label for="description">Excerpt / description</label><textarea id="description" rows="3" maxlength="320" placeholder="Short summary used in cards and search results"></textarea><small><span id="descCount">0</span>/320 characters</small></div>
+        </div>
+
+        <div class="card editor-card">
+          <div class="editor-head"><strong>Article content</strong><div class="editor-meta"><span id="wordCount">0 words</span> · <span id="readTime">0 min read</span> · <span class="autosave" id="autosaveState">Autosave ready</span></div></div>
+          <div id="editor"></div>
+        </div>
+
+        <div class="card stack">
+          <div><strong class="label">FAQs</strong><div class="hint">Optional FAQ section and FAQ structured data.</div></div>
+          <div id="faqList"></div>
+          <button class="btn" type="button" id="addFaq">+ Add FAQ</button>
+        </div>
+
+        <div class="card stack" id="revisionsCard" hidden>
+          <div><strong class="label">Revision history</strong><div class="hint">Every published update is versioned in Git. Restoring creates a new commit, so history is never destroyed.</div></div>
+          <div id="revisionList"></div>
+        </div>
+      </section>
+
+      <aside class="stack">
+        <div class="card stack">
+          <div class="publish-state"><strong class="label">Publishing</strong><span class="pill draft" id="statusPill">Draft</span></div>
+          <div class="field"><label for="publishAt">Publish date & time</label><input id="publishAt" type="datetime-local" /><small>Future time = scheduled publish. Scheduler checks every 5 minutes.</small></div>
+          <div class="field"><label for="category">Category</label><input id="category" value="Guides" maxlength="80" /></div>
+          <div class="field"><label for="tags">Tags</label><input id="tags" placeholder="seo, guides, news" /></div>
+          <div class="field"><label for="author">Author</label><input id="author" value="Editorial Team" maxlength="100" /></div>
+          <div class="checks">
+            <label class="check"><input id="featured" type="checkbox" /> Featured</label>
+            <label class="check"><input id="hideAds" type="checkbox" /> Hide ads</label>
+            <label class="check"><input id="noindex" type="checkbox" /> Noindex</label>
+            <label class="check"><input id="nofollow" type="checkbox" /> Nofollow</label>
+          </div>
+          <div class="actions"><button class="btn" type="button" id="saveDraft">Save draft</button><button class="btn primary" type="button" id="publish">Publish / schedule</button><button class="btn danger" type="button" id="deletePost" hidden>Delete</button></div>
+        </div>
+
+        <div class="card stack">
+          <strong class="label">Featured image</strong>
+          <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+          <button class="btn" type="button" id="uploadImage">Optimize & upload</button>
+          <div class="field"><label for="featuredImage">Image URL</label><input id="featuredImage" placeholder="/uploads/..." /></div>
+          <div class="field"><label for="featuredImageAlt">Alt text</label><input id="featuredImageAlt" maxlength="180" /></div>
+          <img id="mediaPreview" class="media-preview" hidden alt="" />
+        </div>
+
+        <div class="card stack">
+          <strong class="label">SEO</strong>
+          <div class="metric-row"><div class="metric"><strong id="seoTitleMetric">0</strong><span>title chars</span></div><div class="metric"><strong id="seoDescMetric">0</strong><span>meta chars</span></div><div class="metric"><strong id="seoWordsMetric">0</strong><span>words</span></div></div>
+          <div class="field"><label for="seoTitle">SEO title</label><input id="seoTitle" maxlength="180" placeholder="Defaults to article title" /></div>
+          <div class="field"><label for="seoDescription">Meta description</label><textarea id="seoDescription" rows="3" maxlength="320" placeholder="Defaults to excerpt"></textarea></div>
+          <div class="field"><label for="focusKeyword">Focus keyword</label><input id="focusKeyword" maxlength="120" /></div>
+          <div class="field"><label for="canonical">Canonical URL</label><input id="canonical" type="url" placeholder="Optional" /></div>
+        </div>
+
+        <div class="card stack">
+          <strong class="label">Social sharing</strong>
+          <div class="field"><label for="ogTitle">Social title</label><input id="ogTitle" maxlength="180" /></div>
+          <div class="field"><label for="ogDescription">Social description</label><textarea id="ogDescription" rows="2" maxlength="320"></textarea></div>
+          <div class="field"><label for="ogImage">Social image</label><input id="ogImage" placeholder="Defaults to featured image" /></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="post-picker" id="postPicker">
+  <div class="picker-card"><div class="picker-head"><input id="postSearch" placeholder="Search articles…" /><button class="btn" id="closePicker">Close</button></div><div class="picker-list" id="pickerList"></div></div>
+</div>
+
+<script>
+  import Editor from '@toast-ui/editor';
+
+  const root = document.querySelector('#editor');
+  if (root instanceof HTMLElement) {
+    const editor = new Editor({
+      el: root,
+      height: '620px',
+      initialEditType: 'wysiwyg',
+      previewStyle: 'vertical',
+      usageStatistics: false,
+      hideModeSwitch: false,
+      toolbarItems: [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol', 'task', 'indent', 'outdent'],
+        ['table', 'image', 'link'],
+        ['code', 'codeblock'],
+      ],
+      hooks: {
+        addImageBlobHook: async (blob, callback) => {
+          try {
+            const file = blob instanceof File ? blob : new File([blob], `image-${Date.now()}.png`, { type: blob.type || 'image/png' });
+            const uploaded = await (window as any).cmsUploadImage(file);
+            callback(uploaded.url, uploaded.alt || '');
+          } catch (error) {
+            (window as any).cmsNotice(error instanceof Error ? error.message : 'Image upload failed.', false);
+          }
+        },
+      },
+    });
+    (window as any).cmsEditor = editor;
+    window.dispatchEvent(new CustomEvent('cms-editor-ready'));
+  }
+</script>
+
+<script is:inline>
+  const $ = (id) => document.getElementById(id);
+  let posts = [], templates = [], current = null, dirty = false, editorReady = false, autosaveTimer = null;
+  const editor = () => window.cmsEditor;
+  const nowLocalValue = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+  const slugify = (v) => String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90);
+  const esc = (value) => String(value||'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  async function api(url, options={}){ const r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options}); const data=await r.json().catch(()=>({})); if(!r.ok) throw new Error(data.error||`Request failed (${r.status})`); return data; }
+  function notice(text,ok=true){ const el=$('notice'); el.textContent=text; el.className=`notice show ${ok?'ok':'err'}`; clearTimeout(el._timer); el._timer=setTimeout(()=>el.classList.remove('show'),5000); }
+  window.cmsNotice=notice;
+
+  async function optimizeImage(file){ if(file.size>12*1024*1024)throw new Error('Image must be under 12 MB.'); const bitmap=await createImageBitmap(file),max=1800,scale=Math.min(1,max/bitmap.width),canvas=document.createElement('canvas'); canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale); canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height); return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Image conversion failed.')),'image/webp',.84)); }
+  async function uploadImage(file){ const blob=await optimizeImage(file),base64=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(blob)}),name=`${slugify($('slug').value||$('title').value)||'image'}-${Date.now()}.webp`; const data=await api('/api/admin/media',{method:'POST',body:JSON.stringify({name,type:'image/webp',base64})}); return {url:data.url,alt:$('featuredImageAlt').value||''}; }
+  window.cmsUploadImage=uploadImage;
+
+  function editorBody(){ return editorReady && editor() ? editor().getMarkdown() : ''; }
+  function setEditorBody(value){ if(editorReady&&editor()) editor().setMarkdown(value||'',false); else window._pendingCmsBody=value||''; updateMetrics(); }
+  window.addEventListener('cms-editor-ready',()=>{ editorReady=true; if(window._pendingCmsBody!==undefined){editor().setMarkdown(window._pendingCmsBody||'',false);delete window._pendingCmsBody} editor().on('change',()=>{dirty=true;updateMetrics();scheduleAutosave()}); });
+
+  function statusOf(post){ if(post?.draft)return'draft'; const t=post?.publishAt?Date.parse(post.publishAt):Date.parse(`${post?.pubDate||''}T00:00:00Z`); return Number.isFinite(t)&&t>Date.now()?'scheduled':'published'; }
+  function setStatus(status){ const el=$('statusPill');el.textContent=status[0].toUpperCase()+status.slice(1);el.className=`pill ${status}`; }
+  function isoFromLocal(value){ return value ? new Date(value).toISOString() : undefined; }
+  function localFromIso(value){ if(!value)return nowLocalValue(); const d=new Date(value); if(Number.isNaN(d.valueOf()))return nowLocalValue(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); }
+
+  function faqData(){ return [...document.querySelectorAll('.faq-row')].map(row=>({question:row.querySelector('[data-faq=q]').value.trim(),answer:row.querySelector('[data-faq=a]').value.trim()})).filter(item=>item.question&&item.answer); }
+  function addFaq(item={question:'',answer:''}){ const row=document.createElement('div');row.className='faq-row';row.innerHTML=`<input data-faq="q" placeholder="Question"><textarea data-faq="a" rows="2" placeholder="Answer"></textarea><button class="btn danger" type="button">×</button>`;row.querySelector('[data-faq=q]').value=item.question||'';row.querySelector('[data-faq=a]').value=item.answer||'';row.querySelector('button').onclick=()=>{row.remove();dirty=true};$('faqList').append(row); }
+  $('addFaq').onclick=()=>addFaq();
+
+  function formData(draft){ const publishAt=isoFromLocal($('publishAt').value); const editingPublished=current&&!current.draft; return { slug:$('slug').value,originalSlug:current?.originalSlug||current?.slug,title:$('title').value,description:$('description').value,category:$('category').value,tags:$('tags').value.split(',').map(v=>v.trim()).filter(Boolean),author:$('author').value,pubDate:(publishAt||new Date().toISOString()).slice(0,10),publishAt,updatedDate:!draft&&editingPublished?new Date().toISOString().slice(0,10):current?.updatedDate,featuredImage:$('featuredImage').value,featuredImageAlt:$('featuredImageAlt').value,seoTitle:$('seoTitle').value,seoDescription:$('seoDescription').value,focusKeyword:$('focusKeyword').value,canonical:$('canonical').value,ogTitle:$('ogTitle').value,ogDescription:$('ogDescription').value,ogImage:$('ogImage').value,template:$('template').value,draft,noindex:$('noindex').checked,nofollow:$('nofollow').checked,featured:$('featured').checked,hideAds:$('hideAds').checked,faq:faqData(),body:editorBody(),sha:current?.sha}; }
+
+  function clearForm(){ current=null;['title','slug','description','tags','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>$(id).value='');$('category').value='Guides';$('author').value='Editorial Team';$('publishAt').value=nowLocalValue();$('template').value='';['featured','hideAds','noindex','nofollow'].forEach(id=>$(id).checked=false);$('faqList').innerHTML='';$('mediaPreview').hidden=true;$('deletePost').hidden=true;$('revisionsCard').hidden=true;$('pageTitle').textContent='New article';setEditorBody('');setStatus('draft');dirty=false;loadAutosave('new');updateMetrics();history.replaceState({},'',location.pathname); }
+
+  function loadPost(post){ current={...post,originalSlug:post.slug};$('pageTitle').textContent=`Edit: ${post.title}`;['title','slug','description','category','author','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>$(id).value=post[id]||'');$('tags').value=(post.tags||[]).join(', ');$('publishAt').value=localFromIso(post.publishAt||`${post.pubDate}T00:00:00Z`);$('template').value=post.template||'';['featured','hideAds','noindex','nofollow'].forEach(id=>$(id).checked=!!post[id]);$('faqList').innerHTML='';(post.faq||[]).forEach(addFaq);if(post.featuredImage){$('mediaPreview').src=post.featuredImage;$('mediaPreview').hidden=false}else $('mediaPreview').hidden=true;$('deletePost').hidden=false;setEditorBody(post.body||'');setStatus(statusOf(post));dirty=false;history.replaceState({},'',`${location.pathname}?slug=${encodeURIComponent(post.slug)}`);loadRevisions(post.slug);loadAutosave(post.slug);updateMetrics(); }
+
+  function updateMetrics(){ const body=editorBody(), words=body.trim()?body.trim().split(/\s+/).length:0;$('wordCount').textContent=`${words} words`;$('readTime').textContent=`${Math.max(1,Math.ceil(words/220))} min read`;$('seoWordsMetric').textContent=words;$('seoTitleMetric').textContent=($('seoTitle').value||$('title').value).length;$('seoDescMetric').textContent=($('seoDescription').value||$('description').value).length;$('descCount').textContent=$('description').value.length; const publishAt=isoFromLocal($('publishAt').value);setStatus(current?.draft?'draft':publishAt&&Date.parse(publishAt)>Date.now()?'scheduled':current?'published':'draft'); }
+  ['title','description','seoTitle','seoDescription','publishAt'].forEach(id=>$(id).addEventListener('input',()=>{dirty=true;updateMetrics();scheduleAutosave()})); document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('change',()=>{dirty=true;scheduleAutosave()}));
+  $('title').addEventListener('input',()=>{if(!current)$('slug').value=slugify($('title').value)});
+
+  function autosaveKey(){ return `cms-autosave:${current?.slug||$('slug').value||'new'}`; }
+  function scheduleAutosave(){ clearTimeout(autosaveTimer);$('autosaveState').textContent='Unsaved changes';autosaveTimer=setTimeout(()=>{try{localStorage.setItem(autosaveKey(),JSON.stringify({savedAt:Date.now(),data:formData(true)}));$('autosaveState').textContent=`Local autosave ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;}catch{$('autosaveState').textContent='Autosave unavailable';}},1800); }
+  function loadAutosave(slug){ const key=`cms-autosave:${slug||'new'}`,raw=localStorage.getItem(key);if(!raw)return;try{const saved=JSON.parse(raw);if(!saved?.data||Date.now()-Number(saved.savedAt||0)>7*86400000)return;if(confirm('A newer local autosave exists for this article. Restore it?')){const d=saved.data;['title','slug','description','category','author','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>{if(d[id]!==undefined)$(id).value=d[id]||''});$('tags').value=(d.tags||[]).join(', ');$('publishAt').value=localFromIso(d.publishAt);setEditorBody(d.body||'');notice('Local autosave restored.');dirty=true;}}catch{} }
+
+  async function save(draft){ const button=draft?$('saveDraft'):$('publish');button.disabled=true;try{const data=await api('/api/admin/posts',{method:'POST',body:JSON.stringify(formData(draft))});localStorage.removeItem(autosaveKey());dirty=false;notice(data.status==='scheduled'?'Article scheduled.':'Article saved.');await loadPosts();const post=posts.find(p=>p.slug===data.slug);if(post)loadPost(post);}catch(error){notice(error.message,false)}finally{button.disabled=false} }
+  $('saveDraft').onclick=()=>save(true);$('publish').onclick=()=>save(false);
+  $('preview').onclick=()=>{localStorage.setItem('cms-preview',JSON.stringify(formData(false)));window.open('/admin/preview/','_blank','noopener')};
+  $('deletePost').onclick=async()=>{if(!current||!confirm(`Delete “${current.title}”? Git history can still recover published revisions.`))return;try{await api('/api/admin/posts',{method:'DELETE',body:JSON.stringify({slug:current.slug})});notice('Article deleted.');await loadPosts();clearForm();}catch(error){notice(error.message,false)}};
+
+  $('template').onchange=()=>{const t=templates.find(item=>item.id===$('template').value);if(!t)return;if(editorBody().trim()&&!confirm('Replace the current article body with this template?'))return;setEditorBody(t.body);dirty=true;scheduleAutosave()};
+  $('uploadImage').onclick=async()=>{const file=$('imageFile').files?.[0];if(!file)return notice('Choose an image first.',false);try{const result=await uploadImage(file);$('featuredImage').value=result.url;$('mediaPreview').src=result.url;$('mediaPreview').hidden=false;notice('Image optimized and uploaded.');dirty=true}catch(error){notice(error.message,false)}};
+
+  async function loadRevisions(slug){$('revisionsCard').hidden=false;$('revisionList').innerHTML='<div class="hint">Loading revisions…</div>';try{const data=await api(`/api/admin/revisions?slug=${encodeURIComponent(slug)}`);const list=data.revisions||[];if(!list.length){$('revisionList').innerHTML='<div class="hint">No published revisions yet.</div>';return}$('revisionList').replaceChildren(...list.map(rev=>{const row=document.createElement('div');row.className='revision';const title=document.createElement('strong');title.textContent=rev.message||'Revision';const meta=document.createElement('small');meta.textContent=`${rev.author} · ${rev.date?new Date(rev.date).toLocaleString():'Unknown date'}`;const restore=document.createElement('button');restore.className='btn';restore.style.marginTop='7px';restore.textContent='Restore';restore.onclick=async()=>{if(!confirm('Restore this published revision? The current version remains in Git history.'))return;try{await api('/api/admin/revisions',{method:'POST',body:JSON.stringify({slug,sha:rev.sha})});notice('Revision restored. Reloading post…');await loadPosts();const p=posts.find(x=>x.slug===slug);if(p)loadPost(p)}catch(error){notice(error.message,false)}};row.append(title,meta,restore);return row}))}catch(error){$('revisionList').innerHTML=`<div class="hint">${esc(error.message)}</div>`} }
+
+  function renderPicker(){const q=$('postSearch').value.trim().toLowerCase();const filtered=posts.filter(p=>!q||`${p.title} ${p.slug} ${p.category} ${(p.tags||[]).join(' ')}`.toLowerCase().includes(q));const root=$('pickerList');root.innerHTML='';filtered.forEach(post=>{const row=document.createElement('div');row.className='post-item';const left=document.createElement('div');const title=document.createElement('strong');title.textContent=post.title;const sub=document.createElement('small');sub.textContent=`${statusOf(post)} · /${post.slug}/ · ${post.category}`;left.append(title,sub);const badge=document.createElement('span');badge.className=`pill ${statusOf(post)}`;badge.textContent=statusOf(post);row.append(left,badge);row.onclick=()=>{$('postPicker').classList.remove('show');loadPost(post)};root.append(row)});if(!filtered.length)root.innerHTML='<div class="hint" style="padding:16px">No matching articles.</div>';}
+  $('choosePost').onclick=()=>{$('postPicker').classList.add('show');$('postSearch').focus();renderPicker()};$('closePicker').onclick=()=>$('postPicker').classList.remove('show');$('postSearch').oninput=renderPicker;$('newPost').onclick=()=>{if(dirty&&!confirm('Discard unsaved changes and start a new article?'))return;clearForm()};
+
+  async function loadPosts(){const data=await api('/api/admin/posts');posts=data.posts||[];renderPicker();return data;}
+  async function loadTemplates(){try{const data=await api('/api/admin/templates');templates=data.templates||[];const select=$('template');select.innerHTML='<option value="">Blank article</option>';templates.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;select.append(o)})}catch(error){notice(error.message,false)} }
+
+  async function boot(){try{const auth=await api('/api/admin/login');if(!auth.authenticated)throw new Error('Not signed in.');$('app').hidden=false;await Promise.all([loadPosts(),loadTemplates()]);const slug=new URL(location.href).searchParams.get('slug');const post=slug?posts.find(p=>p.slug===slug):null;if(post)loadPost(post);else clearForm();}catch{location.replace('/admin/login/')}}
+  window.addEventListener('beforeunload',(event)=>{if(dirty){event.preventDefault();event.returnValue=''}});
+  boot();
+</script>
+</body>
+</html>
