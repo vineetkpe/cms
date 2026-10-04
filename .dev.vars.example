@@ -1,11 +1,14 @@
-# Local development only. Never commit real secrets.
-DEV_ADMIN_BYPASS=true
+# Local development only. Never commit real production secrets.
+# Keep this false unless you intentionally want to bypass auth locally.
+DEV_ADMIN_BYPASS=false
 
 # Required for publishing static content and media back to GitHub.
 CMS_GITHUB_TOKEN=github_fine_grained_token_here
 CMS_GITHUB_REPO=vineetkpe/cms
 CMS_GITHUB_BRANCH=main
 
-# CMS authentication and database are handled by Supabase Auth + RLS.
-# The Supabase URL and publishable key are intentionally public client values.
-# Never put a Supabase secret/service_role key in browser code.
+# Required to encrypt unpublished drafts. Use a separate long random secret.
+CMS_DRAFT_KEY=replace_with_a_long_random_secret
+
+# Production authentication is stored as the Cloudflare Worker secret CMS_AUTH_CONFIG.
+# Do not commit the real CMS_AUTH_CONFIG value or plaintext passwords.
