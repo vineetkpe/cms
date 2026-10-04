@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { deleteFile, getTextFile, listDirectory, putTextFile } from '../../../lib/github';
 import { parseMarkdown, toMarkdown, type AdminPost } from '../../../lib/markdown';
+import { decryptDraft, draftPath, DRAFT_DIR, encryptDraft } from '../../../lib/drafts';
 import { slugify } from '../../../lib/posts';
 
 export const prerender = false;
@@ -37,16 +38,41 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
   };
 }
 
+async function tryDelete(path: string, message: string) {
+  try {
+    const file = await getTextFile(path);
+    await deleteFile(path, file.sha, message);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
     const entries = await listDirectory(DIR);
     const files = Array.isArray(entries) ? entries.filter((item) => item.type === 'file' && item.name.endsWith('.md')) : [];
-    const posts = await Promise.all(files.map(async (item) => {
+    const published = await Promise.all(files.map(async (item) => {
       const file = await getTextFile(`${DIR}/${item.name}`);
       return parseMarkdown(file.text, item.name.replace(/\.md$/, ''), file.sha);
     }));
+
+    const bySlug = new Map(published.map((post) => [post.slug, post]));
+    try {
+      const draftEntries = await listDirectory(DRAFT_DIR);
+      const draftFiles = Array.isArray(draftEntries) ? draftEntries.filter((item) => item.type === 'file' && item.name.endsWith('.json')) : [];
+      for (const item of draftFiles) {
+        const file = await getTextFile(`${DRAFT_DIR}/${item.name}`);
+        const draft = await decryptDraft(file.text);
+        bySlug.set(draft.slug, draft);
+      }
+    } catch {
+      // Draft directory does not exist until the first draft is saved.
+    }
+
+    const posts = Array.from(bySlug.values());
     posts.sort((a, b) => String(b.pubDate).localeCompare(String(a.pubDate)));
     return Response.json({ posts, admin: auth.email });
   } catch (error) {
@@ -59,19 +85,27 @@ export const POST: APIRoute = async ({ request }) => {
   if (!auth.ok) return authError(auth);
   try {
     const post = cleanPost(await request.json());
-    const path = `${DIR}/${post.slug}.md`;
-    let existingSha = post.sha;
-    if (!existingSha) {
-      try { existingSha = (await getTextFile(path)).sha; } catch { /* new file */ }
-    }
-    const result = await putTextFile(path, toMarkdown(post), `${post.draft ? 'Save draft' : 'Publish'}: ${post.title}`, existingSha);
 
+    if (post.draft) {
+      const path = await draftPath(post.slug);
+      let sha: string | undefined;
+      try { sha = (await getTextFile(path)).sha; } catch { /* first save */ }
+      const result = await putTextFile(path, await encryptDraft(post), 'Save private CMS draft', sha);
+      if (post.originalSlug && post.originalSlug !== post.slug) {
+        await tryDelete(await draftPath(post.originalSlug), 'Move private CMS draft');
+      }
+      return Response.json({ ok: true, slug: post.slug, commit: result?.commit?.sha || null });
+    }
+
+    const path = `${DIR}/${post.slug}.md`;
+    let existingSha: string | undefined;
+    try { existingSha = (await getTextFile(path)).sha; } catch { /* new article */ }
+    const result = await putTextFile(path, toMarkdown({ ...post, draft: false }), `Publish: ${post.title}`, existingSha);
+
+    await tryDelete(await draftPath(post.slug), 'Remove published CMS draft');
     if (post.originalSlug && post.originalSlug !== post.slug) {
-      try {
-        const oldPath = `${DIR}/${post.originalSlug}.md`;
-        const oldFile = await getTextFile(oldPath);
-        await deleteFile(oldPath, oldFile.sha, `Move article: ${post.originalSlug} -> ${post.slug}`);
-      } catch { /* old file may already be absent */ }
+      await tryDelete(await draftPath(post.originalSlug), 'Remove moved CMS draft');
+      await tryDelete(`${DIR}/${post.originalSlug}.md`, `Move article: ${post.originalSlug} -> ${post.slug}`);
     }
     return Response.json({ ok: true, slug: post.slug, commit: result?.commit?.sha || null });
   } catch (error) {
@@ -86,9 +120,9 @@ export const DELETE: APIRoute = async ({ request }) => {
     const body = await request.json();
     const slug = slugify(String(body.slug || ''));
     if (!slug) throw new Error('Invalid slug.');
-    const path = `${DIR}/${slug}.md`;
-    const file = await getTextFile(path);
-    await deleteFile(path, file.sha, `Delete article: ${slug}`);
+    const deletedPublished = await tryDelete(`${DIR}/${slug}.md`, `Delete article: ${slug}`);
+    const deletedDraft = await tryDelete(await draftPath(slug), 'Delete private CMS draft');
+    if (!deletedPublished && !deletedDraft) throw new Error('Article was not found.');
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to delete post.' }, { status: 400 });
