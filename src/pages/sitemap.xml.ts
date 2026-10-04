@@ -1,10 +1,22 @@
 import type { APIRoute } from 'astro';
 import { getPublishedPosts, slugify } from '../lib/posts';
 import site from '../data/site.json';
+import pages from '../data/pages.json';
 
 export const prerender = true;
 type Entry = { loc: string; lastmod?: string };
-const staticPaths = ['/', '/about/', '/contact/', '/editorial-policy/', '/privacy/', '/terms/', '/disclaimer/', '/categories/', '/tags/', '/authors/', '/articles/'];
+const managedPaths = [
+  ['about', '/about/'],
+  ['contact', '/contact/'],
+  ['editorialPolicy', '/editorial-policy/'],
+  ['privacy', '/privacy/'],
+  ['terms', '/terms/'],
+  ['disclaimer', '/disclaimer/'],
+] as const;
+const staticPaths = [
+  '/', '/categories/', '/tags/', '/authors/', '/articles/',
+  ...managedPaths.filter(([key]) => !(pages as any)[key]?.noindex).map(([, path]) => path),
+];
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const perPage = 18;
 
