@@ -8,13 +8,19 @@ const blocks = String(page.body || '').split(/\n\s*\n/).map((value) => value.tri
   return { type: 'p', text: value };
 });
 ---
-<BaseLayout title={page.title} description={page.description}>
+<BaseLayout
+  title={page.seoTitle || page.title}
+  description={page.description}
+  canonical={page.canonical || undefined}
+  image={page.ogImage || undefined}
+  noindex={Boolean(page.noindex)}>
   <div class="container page-wrap">
     <div class="kicker">{page.kicker}</div>
     <h1>{page.title}</h1>
     <div class="managed-copy">
       {blocks.map((block) => block.type === 'h2' ? <h2>{block.text}</h2> : block.type === 'list' ? <ul>{block.items?.map((item) => <li>{item}</li>)}</ul> : <p>{block.text}</p>)}
     </div>
+    <slot />
   </div>
   <style>.managed-copy h2{font-size:1.6rem;margin:2em 0 .55em;letter-spacing:-.03em}.managed-copy p{white-space:pre-line}.managed-copy ul{color:#485365;padding-left:1.3rem}</style>
 </BaseLayout>
