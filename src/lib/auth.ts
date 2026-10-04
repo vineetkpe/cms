@@ -31,28 +31,30 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const encoder = new TextEncoder();
 export const SESSION_COOKIE = '__Host-cms_session';
 export const SESSION_MAX_AGE = 8 * 60 * 60;
-const DUMMY_HASH = 'pbkdf2-sha256$600000$Y21zLWR1bW15LXNhbHQ$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const DUMMY_HASH = 'sha256$Y21zLWR1bW15LXNhbHQ$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
-// Exactly three fixed CMS accounts. Only salted PBKDF2 hashes are committed;
+// Exactly three fixed CMS accounts. Only salted hashes are committed;
 // plaintext passwords are never stored in the repository.
+// These accounts use long, randomly generated passwords, so a fast verifier
+// avoids Worker CPU-limit failures while keeping offline guessing impractical.
 const STATIC_USERS: StaticUser[] = [
   {
     username: 'admin',
     displayName: 'CMS Owner',
     role: 'owner',
-    passwordHash: 'pbkdf2-sha256$600000$XhGbn_80GdBquhIpG-woYQ$bT5Q2z_EtQOj07Nq_oWCv8fkmQSX6rgqSqWi8TvLYXw',
+    passwordHash: 'sha256$rlZgpQppxZlZa-SHU12-HQ$_BcigMMAqAhAlVxCscKFtEoGZNWN1insD-cbdqVNn7k',
   },
   {
     username: 'manager',
     displayName: 'CMS Admin',
     role: 'admin',
-    passwordHash: 'pbkdf2-sha256$600000$z0Tgci-yGvjliSi2UMY1Kg$r1KOidKh33oPlt_d8xiQ80UDrAXU3dZZhgALr7VMi3g',
+    passwordHash: 'sha256$jBav55ko1cOzP6CMA-6twQ$FDqVdUz67Pc3H7gpbWMbMyKr5cipdBrz-u0t4PL85yU',
   },
   {
     username: 'editor',
     displayName: 'CMS Editor',
     role: 'editor',
-    passwordHash: 'pbkdf2-sha256$600000$io_-a9x4fQ7QYf3sfyctBA$TT6eyd2xg-sx_nQS3DxgB2HC0RZ28tXedgMV4A8g47M',
+    passwordHash: 'sha256$calb31PdfcrGkmhiHzkLpQ$mr-cviocszhqVWhU5vEXU4bmytEBe5asxOJeZWVoiaQ',
   },
 ];
 
@@ -76,39 +78,29 @@ function fromBase64Url(value: string) {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-  return copy.buffer;
-}
-
 function cleanUsername(value: unknown) {
   return String(value || '').trim().toLowerCase();
 }
 
 async function verifyPassword(password: string, stored: string) {
   const parts = stored.split('$');
-  if (parts.length !== 4 || parts[0] !== 'pbkdf2-sha256') return false;
-  const iterations = Number(parts[1]);
-  if (!Number.isInteger(iterations) || iterations < 310000 || iterations > 1200000) return false;
+  if (parts.length !== 3 || parts[0] !== 'sha256') return false;
 
   let salt: Uint8Array;
   let expected: Uint8Array;
   try {
-    salt = fromBase64Url(parts[2]);
-    expected = fromBase64Url(parts[3]);
+    salt = fromBase64Url(parts[1]);
+    expected = fromBase64Url(parts[2]);
   } catch {
     return false;
   }
 
   if (salt.length < 12 || expected.length !== 32) return false;
-  const baseKey = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const derived = new Uint8Array(await crypto.subtle.deriveBits({
-    name: 'PBKDF2',
-    hash: 'SHA-256',
-    salt: bytesToArrayBuffer(salt),
-    iterations,
-  }, baseKey, 256));
+  const passwordBytes = encoder.encode(password);
+  const input = new Uint8Array(salt.length + passwordBytes.length);
+  input.set(salt, 0);
+  input.set(passwordBytes, salt.length);
+  const derived = new Uint8Array(await crypto.subtle.digest('SHA-256', input));
 
   let diff = derived.length ^ expected.length;
   for (let i = 0; i < Math.min(derived.length, expected.length); i++) diff |= derived[i] ^ expected[i];
