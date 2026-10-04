@@ -9,17 +9,21 @@ type StaticUser = {
   passwordHash: string;
 };
 
-type SessionRecord = {
+type SessionRow = {
   username: string;
-  displayName: string;
+  display_name: string;
   role: CmsRole;
-  expiresAt: number;
+  expires_at: number;
 };
 
-type KvBinding = {
-  get(key: string): Promise<string | null>;
-  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
-  delete(key: string): Promise<void>;
+type D1Statement = {
+  bind(...values: unknown[]): D1Statement;
+  run(): Promise<unknown>;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+};
+
+type D1Binding = {
+  prepare(query: string): D1Statement;
 };
 
 const ALL_ROLES: CmsRole[] = ['owner', 'admin', 'editor', 'author'];
@@ -52,9 +56,9 @@ const STATIC_USERS: StaticUser[] = [
   },
 ];
 
-function cmsKv(): KvBinding {
-  const binding = (env as any).CMS_KV as KvBinding | undefined;
-  if (!binding) throw new Error('CMS_KV is not configured.');
+function cmsDb(): D1Binding {
+  const binding = (env as any).DB as D1Binding | undefined;
+  if (!binding) throw new Error('DB is not configured.');
   return binding;
 }
 
@@ -113,7 +117,7 @@ async function verifyPassword(password: string, stored: string) {
 
 async function sessionStorageKey(token: string) {
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(token));
-  return `cms:session:${toBase64Url(new Uint8Array(digest))}`;
+  return toBase64Url(new Uint8Array(digest));
 }
 
 function newSessionToken() {
@@ -132,41 +136,40 @@ export async function authenticateStaticUser(usernameInput: unknown, passwordInp
 
 export async function createSession(user: StaticUser) {
   const token = newSessionToken();
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
-  const record: SessionRecord = {
-    username: user.username,
-    displayName: user.displayName,
-    role: user.role,
-    expiresAt,
-  };
-  await cmsKv().put(await sessionStorageKey(token), JSON.stringify(record), { expirationTtl: SESSION_MAX_AGE });
+  const tokenHash = await sessionStorageKey(token);
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + SESSION_MAX_AGE;
+  const db = cmsDb();
+
+  await db.prepare('DELETE FROM cms_sessions WHERE expires_at <= ?').bind(now).run().catch(() => {});
+  await db.prepare(`INSERT OR REPLACE INTO cms_sessions
+    (token_hash, username, display_name, role, expires_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(tokenHash, user.username, user.displayName, user.role, expiresAt, now)
+    .run();
+
   return token;
 }
 
 async function verifySession(token: string) {
   if (!/^[A-Za-z0-9_-]{40,100}$/.test(token)) return null;
 
-  const key = await sessionStorageKey(token);
-  const raw = await cmsKv().get(key);
-  if (!raw) return null;
-
-  let record: SessionRecord;
-  try {
-    record = JSON.parse(raw) as SessionRecord;
-  } catch {
-    await cmsKv().delete(key).catch(() => {});
-    return null;
-  }
+  const tokenHash = await sessionStorageKey(token);
+  const row = await cmsDb()
+    .prepare('SELECT username, display_name, role, expires_at FROM cms_sessions WHERE token_hash = ? LIMIT 1')
+    .bind(tokenHash)
+    .first<SessionRow>();
+  if (!row) return null;
 
   const now = Math.floor(Date.now() / 1000);
-  if (!Number.isInteger(record.expiresAt) || record.expiresAt <= now || record.expiresAt > now + SESSION_MAX_AGE + 60) {
-    await cmsKv().delete(key).catch(() => {});
+  if (!Number.isInteger(row.expires_at) || row.expires_at <= now || row.expires_at > now + SESSION_MAX_AGE + 60) {
+    await cmsDb().prepare('DELETE FROM cms_sessions WHERE token_hash = ?').bind(tokenHash).run().catch(() => {});
     return null;
   }
 
-  const user = STATIC_USERS.find((candidate) => candidate.username === record.username);
-  if (!user || user.role !== record.role || user.displayName !== record.displayName) {
-    await cmsKv().delete(key).catch(() => {});
+  const user = STATIC_USERS.find((candidate) => candidate.username === row.username);
+  if (!user || user.role !== row.role || user.displayName !== row.display_name) {
+    await cmsDb().prepare('DELETE FROM cms_sessions WHERE token_hash = ?').bind(tokenHash).run().catch(() => {});
     return null;
   }
 
@@ -186,7 +189,8 @@ export async function revokeSession(request: Request) {
   const token = cookieValue(request, SESSION_COOKIE);
   if (!token) return;
   try {
-    await cmsKv().delete(await sessionStorageKey(token));
+    const tokenHash = await sessionStorageKey(token);
+    await cmsDb().prepare('DELETE FROM cms_sessions WHERE token_hash = ?').bind(tokenHash).run();
   } catch {
     // Clearing the browser cookie still signs the user out locally.
   }
