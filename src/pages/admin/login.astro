@@ -17,14 +17,14 @@ export const prerender = true;
     <div class="brand">CMS</div>
     <div class="kicker">Team access</div>
     <h1>Sign in</h1>
-    <p>Use one of the three CMS usernames configured securely on the Worker.</p>
+    <p>Use your CMS username and password.</p>
     <form id="loginForm">
       <div class="field"><label for="username">Username</label><input id="username" type="text" maxlength="64" autocomplete="username" autocapitalize="none" spellcheck="false" required /></div>
       <div class="field"><label for="password">Password</label><input id="password" type="password" maxlength="512" autocomplete="current-password" required /></div>
       <button class="button" id="submit" type="submit">Sign in</button>
     </form>
     <div id="message" class="message" aria-live="polite"></div>
-    <div class="note">Passwords are never stored in this public repository. Only salted PBKDF2 hashes live inside a Cloudflare Worker secret.</div>
+    <div class="note">Passwords are never stored in this public repository. Only salted password hashes are stored in a Cloudflare Worker secret.</div>
   </main>
 <script is:inline>
   const form = document.querySelector('#loginForm');
