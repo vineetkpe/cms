@@ -3,7 +3,6 @@ import { render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import AdSlot from '../components/AdSlot.astro';
-import Comments from '../components/Comments.astro';
 import { getPublishedPosts, getRelatedPosts, slugify, type PostEntry } from '../lib/posts';
 import site from '../data/site.json';
 
@@ -118,8 +117,6 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
           {post.data.tags.map((tag) => <a href={`/tag/${slugify(tag)}/`}>{tag}</a>)}
         </div>
       )}
-
-      {site.commentsEnabled !== false && <Comments postSlug={slug} />}
 
       {related.length > 0 && (
         <section class="related-posts" aria-labelledby="related-title">
