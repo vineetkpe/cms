@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { deleteFile, getTextFile, listDirectory, putTextFile } from '../../../lib/github';
-import { parseMarkdown, toMarkdown, type AdminPost } from '../../../lib/markdown';
-import { decryptDraft, draftPath, DRAFT_DIR, encryptDraft } from '../../../lib/drafts';
+import { deleteFile, getTextFile, putTextFile } from '../../../lib/github';
+import { toMarkdown, type AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
+import { audit, cmsDelete, cmsInsert, cmsSelect, cmsUpdate } from '../../../lib/supabase';
 
 export const prerender = false;
 const DIR = 'src/content/posts';
@@ -43,12 +43,36 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     hideAds: Boolean(input.hideAds),
     faq,
     body: String(input.body),
-    sha: input.sha ? String(input.sha) : undefined
   };
 }
 
-async function tryDelete(path: string, message: string) {
+function rowToPost(row: any): AdminPost {
+  return {
+    slug: String(row.slug),
+    title: String(row.title),
+    description: String(row.description),
+    body: String(row.body),
+    category: String(row.category || 'Guides'),
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    author: String(row.author || 'Editorial Team'),
+    pubDate: row.published_at ? String(row.published_at).slice(0, 10) : new Date().toISOString().slice(0, 10),
+    updatedDate: row.updated_at ? String(row.updated_at).slice(0, 10) : undefined,
+    featuredImage: row.featured_image || undefined,
+    featuredImageAlt: row.featured_image_alt || undefined,
+    seoTitle: row.seo_title || undefined,
+    seoDescription: row.seo_description || undefined,
+    canonical: row.canonical_url || undefined,
+    draft: row.status === 'draft',
+    noindex: Boolean(row.noindex),
+    featured: Boolean(row.featured),
+    hideAds: Boolean(row.hide_ads),
+    faq: Array.isArray(row.faq) ? row.faq : [],
+  };
+}
+
+async function tryDeletePublished(slug: string, message: string) {
   try {
+    const path = `${DIR}/${slug}.md`;
     const file = await getTextFile(path);
     await deleteFile(path, file.sha, message);
     return true;
@@ -57,33 +81,18 @@ async function tryDelete(path: string, message: string) {
   }
 }
 
+async function getRow(token: string, slug: string) {
+  const rows = await cmsSelect(token, 'cms_posts', `select=*&slug=eq.${encodeURIComponent(slug)}&limit=1`);
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
 export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    const entries = await listDirectory(DIR);
-    const files = Array.isArray(entries) ? entries.filter((item) => item.type === 'file' && item.name.endsWith('.md')) : [];
-    const published = await Promise.all(files.map(async (item) => {
-      const file = await getTextFile(`${DIR}/${item.name}`);
-      return parseMarkdown(file.text, item.name.replace(/\.md$/, ''), file.sha);
-    }));
-
-    const bySlug = new Map(published.map((post) => [post.slug, post]));
-    try {
-      const draftEntries = await listDirectory(DRAFT_DIR);
-      const draftFiles = Array.isArray(draftEntries) ? draftEntries.filter((item) => item.type === 'file' && item.name.endsWith('.json')) : [];
-      for (const item of draftFiles) {
-        const file = await getTextFile(`${DRAFT_DIR}/${item.name}`);
-        const draft = await decryptDraft(file.text);
-        bySlug.set(draft.slug, draft);
-      }
-    } catch {
-      // Draft directory is created on first draft save.
-    }
-
-    const posts = Array.from(bySlug.values());
-    posts.sort((a, b) => String(b.pubDate).localeCompare(String(a.pubDate)));
-    return Response.json({ posts, admin: auth.email });
+    const rows = await cmsSelect(auth.token, 'cms_posts', 'select=*&order=updated_at.desc');
+    const posts = (Array.isArray(rows) ? rows : []).map(rowToPost);
+    return Response.json({ posts, admin: auth.email, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load posts.' }, { status: 500 });
   }
@@ -94,27 +103,62 @@ export const POST: APIRoute = async ({ request }) => {
   if (!auth.ok) return authError(auth);
   try {
     const post = cleanPost(await request.json());
+    const originalSlug = post.originalSlug || post.slug;
+    const existing = await getRow(auth.token, originalSlug);
+    const future = new Date(`${post.pubDate}T23:59:59Z`).getTime() > Date.now();
+    const status = post.draft ? 'draft' : future ? 'scheduled' : 'published';
+    const now = new Date().toISOString();
+    const row = {
+      slug: post.slug,
+      title: post.title,
+      description: post.description,
+      body: post.body,
+      category: post.category,
+      tags: post.tags,
+      author: post.author,
+      status,
+      published_at: new Date(`${post.pubDate}T00:00:00Z`).toISOString(),
+      featured_image: post.featuredImage || null,
+      featured_image_alt: post.featuredImageAlt || null,
+      seo_title: post.seoTitle || null,
+      seo_description: post.seoDescription || null,
+      canonical_url: post.canonical || null,
+      noindex: post.noindex,
+      featured: post.featured,
+      hide_ads: post.hideAds,
+      faq: post.faq,
+      updated_by: auth.id,
+      updated_at: now,
+    };
 
-    if (post.draft) {
-      const path = await draftPath(post.slug);
-      let sha: string | undefined;
-      try { sha = (await getTextFile(path)).sha; } catch { /* first save */ }
-      const result = await putTextFile(path, await encryptDraft(post), 'Save private CMS draft', sha);
-      if (post.originalSlug && post.originalSlug !== post.slug) await tryDelete(await draftPath(post.originalSlug), 'Move private CMS draft');
-      return Response.json({ ok: true, slug: post.slug, commit: result?.commit?.sha || null });
+    let saved: any;
+    if (existing) {
+      const rows = await cmsUpdate(auth.token, 'cms_posts', `id=eq.${encodeURIComponent(String(existing.id))}`, row);
+      saved = Array.isArray(rows) ? rows[0] : null;
+    } else {
+      const rows = await cmsInsert(auth.token, 'cms_posts', { ...row, created_by: auth.id, created_at: now });
+      saved = Array.isArray(rows) ? rows[0] : null;
     }
 
-    const path = `${DIR}/${post.slug}.md`;
-    let existingSha: string | undefined;
-    try { existingSha = (await getTextFile(path)).sha; } catch { /* new article */ }
-    const result = await putTextFile(path, toMarkdown({ ...post, draft: false }), `Publish: ${post.title}`, existingSha);
-
-    await tryDelete(await draftPath(post.slug), 'Remove published CMS draft');
-    if (post.originalSlug && post.originalSlug !== post.slug) {
-      await tryDelete(await draftPath(post.originalSlug), 'Remove moved CMS draft');
-      await tryDelete(`${DIR}/${post.originalSlug}.md`, `Move article: ${post.originalSlug} -> ${post.slug}`);
+    let commit: string | null = null;
+    if (!post.draft) {
+      const path = `${DIR}/${post.slug}.md`;
+      let existingSha: string | undefined;
+      try { existingSha = (await getTextFile(path)).sha; } catch { /* new article */ }
+      const result = await putTextFile(path, toMarkdown({ ...post, draft: false }), `Publish: ${post.title}`, existingSha);
+      commit = result?.commit?.sha || null;
+      if (saved?.id && commit) {
+        await cmsUpdate(auth.token, 'cms_posts', `id=eq.${encodeURIComponent(String(saved.id))}`, { mirror_commit_sha: commit, updated_by: auth.id, updated_at: now });
+      }
+      if (post.originalSlug && post.originalSlug !== post.slug) {
+        await tryDeletePublished(post.originalSlug, `Move article: ${post.originalSlug} -> ${post.slug}`);
+      }
+    } else if (post.originalSlug && post.originalSlug !== post.slug) {
+      await tryDeletePublished(post.originalSlug, 'Remove old published copy after moving article to draft');
     }
-    return Response.json({ ok: true, slug: post.slug, commit: result?.commit?.sha || null });
+
+    await audit(auth.token, auth.id, auth.email, existing ? 'update_post' : 'create_post', 'post', post.slug, { status });
+    return Response.json({ ok: true, slug: post.slug, status, commit });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to save post.' }, { status: 400 });
   }
@@ -127,9 +171,13 @@ export const DELETE: APIRoute = async ({ request }) => {
     const body = await request.json();
     const slug = slugify(String(body.slug || ''));
     if (!slug) throw new Error('Invalid slug.');
-    const deletedPublished = await tryDelete(`${DIR}/${slug}.md`, `Delete article: ${slug}`);
-    const deletedDraft = await tryDelete(await draftPath(slug), 'Delete private CMS draft');
-    if (!deletedPublished && !deletedDraft) throw new Error('Article was not found.');
+    const existing = await getRow(auth.token, slug);
+    if (!existing) throw new Error('Article was not found.');
+
+    if (existing.status !== 'draft') await tryDeletePublished(slug, `Delete article: ${slug}`);
+    const deleted = await cmsDelete(auth.token, 'cms_posts', `id=eq.${encodeURIComponent(String(existing.id))}`);
+    if (!Array.isArray(deleted) || deleted.length === 0) throw new Error('Your role does not allow deleting this article.');
+    await audit(auth.token, auth.id, auth.email, 'delete_post', 'post', slug);
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to delete post.' }, { status: 400 });
