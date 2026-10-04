@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { sameOriginError } from '../../lib/auth';
-import { contentLengthOkay, isEmail, publicApiHeaders, requestFingerprint, text } from '../../lib/security';
+import { contentLengthOkay, isEmail, publicApiHeaders, text } from '../../lib/security';
 import { supabasePublicRpc } from '../../lib/supabase';
 
 export const prerender = false;
@@ -42,14 +42,12 @@ export const POST: APIRoute = async ({ request }) => {
     if (body.length < 2) return Response.json({ error: 'Write a comment before submitting.' }, { status: 400, headers: publicApiHeaders() });
     if (parentId && !/^[0-9a-f-]{36}$/i.test(parentId)) return Response.json({ error: 'Invalid reply target.' }, { status: 400, headers: publicApiHeaders() });
 
-    const fingerprint = await requestFingerprint(request);
     await supabasePublicRpc('cms_submit_comment', {
       p_post_slug: postSlug,
       p_author_name: name,
       p_author_email: email,
       p_body: body,
       p_parent_id: parentId,
-      p_fingerprint: fingerprint,
       p_honeypot: honeypot,
     });
 
