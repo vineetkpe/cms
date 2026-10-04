@@ -2,6 +2,7 @@ import { getSecret } from 'astro:env/server';
 import { bearerToken, getMembership, getSupabaseUser, type CmsRole } from './supabase';
 
 const ALL_ROLES: CmsRole[] = ['owner', 'admin', 'editor', 'author'];
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function cookieValue(request: Request, name: string) {
   const cookie = request.headers.get('cookie') || '';
@@ -12,7 +13,35 @@ function cookieValue(request: Request, name: string) {
   return '';
 }
 
+export function sameOriginError(request: Request) {
+  if (SAFE_METHODS.has(request.method.toUpperCase())) return null;
+  const expected = new URL(request.url).origin;
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  const fetchSite = request.headers.get('sec-fetch-site');
+
+  if (fetchSite && !['same-origin', 'none'].includes(fetchSite)) {
+    return Response.json({ error: 'Cross-site requests are not allowed.' }, { status: 403 });
+  }
+  if (origin && origin !== expected) {
+    return Response.json({ error: 'Cross-site requests are not allowed.' }, { status: 403 });
+  }
+  if (!origin && referer) {
+    try {
+      if (new URL(referer).origin !== expected) {
+        return Response.json({ error: 'Cross-site requests are not allowed.' }, { status: 403 });
+      }
+    } catch {
+      return Response.json({ error: 'Invalid request origin.' }, { status: 403 });
+    }
+  }
+  return null;
+}
+
 export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = ALL_ROLES) {
+  const originError = sameOriginError(request);
+  if (originError) return { ok: false as const, status: 403, message: 'Cross-site requests are not allowed.' };
+
   if (getSecret('DEV_ADMIN_BYPASS') === 'true') {
     return {
       ok: true as const,
@@ -55,5 +84,5 @@ export async function requireAdmin(request: Request, allowedRoles: CmsRole[] = A
 }
 
 export function authError(result: { status: number; message: string }) {
-  return Response.json({ error: result.message }, { status: result.status });
+  return Response.json({ error: result.message }, { status: result.status, headers: { 'Cache-Control': 'no-store' } });
 }
