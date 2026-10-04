@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { sameOriginError } from '../../lib/auth';
-import { contentLengthOkay, isEmail, publicApiHeaders, requestFingerprint, text } from '../../lib/security';
+import { contentLengthOkay, isEmail, publicApiHeaders, text } from '../../lib/security';
 import { supabasePublicRpc } from '../../lib/supabase';
 
 export const prerender = false;
@@ -23,13 +23,11 @@ export const POST: APIRoute = async ({ request }) => {
     if (subject.length < 2) return Response.json({ error: 'Enter a subject.' }, { status: 400, headers: publicApiHeaders() });
     if (message.length < 5) return Response.json({ error: 'Write a little more in your message.' }, { status: 400, headers: publicApiHeaders() });
 
-    const fingerprint = await requestFingerprint(request);
     await supabasePublicRpc('cms_submit_contact', {
       p_name: name,
       p_email: email,
       p_subject: subject,
       p_message: message,
-      p_fingerprint: fingerprint,
       p_honeypot: honeypot,
     });
 
