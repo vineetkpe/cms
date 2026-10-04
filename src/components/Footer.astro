@@ -5,25 +5,43 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
 ---
 <footer class="site-footer">
   <div class="container footer-grid">
-    <div>
-      <a class="brand footer-brand" href="/">{site.logoText || site.name}</a>
+    <div class="footer-about">
+      <a class="brand footer-brand" href="/" aria-label={`${site.name} home`}>
+        <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>
+        <span>{site.logoText || site.name}</span>
+      </a>
       <p>{site.footerText || site.description}</p>
-      {socials.length > 0 && <div class="social-links">{socials.map(([name, href]) => <a href={href} rel="me noopener" target="_blank">{name === 'x' ? 'X' : name[0].toUpperCase() + name.slice(1)}</a>)}</div>}
+      {socials.length > 0 && (
+        <div class="social-links" aria-label="Social links">
+          {socials.map(([name, href]) => <a href={href} rel="me noopener noreferrer" target="_blank">{name === 'x' ? 'X' : name[0].toUpperCase() + name.slice(1)}</a>)}
+        </div>
+      )}
     </div>
-    <div>
-      <strong>Publication</strong>
-      <a href="/about/">About</a>
+
+    <div class="footer-links">
+      <strong>Explore</strong>
+      <a href="/articles/">All articles</a>
       <a href="/categories/">Categories</a>
       <a href="/tags/">Tags</a>
+      <a href="/search/">Search</a>
+    </div>
+
+    <div class="footer-links">
+      <strong>Publication</strong>
+      <a href="/about/">About</a>
       <a href="/editorial-policy/">Editorial policy</a>
       <a href="/contact/">Contact</a>
     </div>
-    <div>
+
+    <div class="footer-links">
       <strong>Legal</strong>
       <a href="/privacy/">Privacy</a>
       <a href="/terms/">Terms</a>
       <a href="/disclaimer/">Disclaimer</a>
     </div>
   </div>
-  <div class="container footer-bottom">© {year} {site.name}. All rights reserved.</div>
+  <div class="container footer-bottom">
+    <span>© {year} {site.name}. All rights reserved.</span>
+    <span>Independent publishing, built for readers.</span>
+  </div>
 </footer>
