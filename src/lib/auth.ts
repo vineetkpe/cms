@@ -36,6 +36,12 @@ function fromBase64Url(value: string) {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 function encodeJson(value: unknown) {
   return toBase64Url(encoder.encode(JSON.stringify(value)));
 }
@@ -96,7 +102,7 @@ async function verifyPassword(password: string, stored: string) {
   }
   if (salt.length < 12 || expected.length !== 32) return false;
   const baseKey = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const derived = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, baseKey, 256));
+  const derived = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: bytesToArrayBuffer(salt), iterations }, baseKey, 256));
   let diff = derived.length ^ expected.length;
   for (let i = 0; i < Math.min(derived.length, expected.length); i++) diff |= derived[i] ^ expected[i];
   return diff === 0;
@@ -127,7 +133,7 @@ async function verifySession(token: string) {
   const key = await hmacKey(config.sessionKey);
   let signatureBytes: Uint8Array;
   try { signatureBytes = fromBase64Url(signature); } catch { return null; }
-  const validSignature = await crypto.subtle.verify('HMAC', key, signatureBytes, encoder.encode(payload));
+  const validSignature = await crypto.subtle.verify('HMAC', key, bytesToArrayBuffer(signatureBytes), encoder.encode(payload));
   if (!validSignature) return null;
 
   let data: any;
