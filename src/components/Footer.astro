@@ -1,7 +1,7 @@
 ---
-import site from '../data/site.json';
+const { site } = Astro.props;
 const year = new Date().getFullYear();
-const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(href));
+const socials = Object.entries(site?.social || {}).filter(([, href]) => Boolean(href));
 ---
 <footer class="site-footer">
   <div class="container footer-grid">
@@ -13,7 +13,7 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
       <p>{site.footerText || site.description}</p>
       {socials.length > 0 && (
         <div class="social-links" aria-label="Social links">
-          {socials.map(([name, href]) => <a href={href} rel="me noopener noreferrer" target="_blank">{name === 'x' ? 'X' : name[0].toUpperCase() + name.slice(1)}</a>)}
+          {socials.map(([name, href]) => <a href={String(href)} rel="me noopener noreferrer" target="_blank">{name === 'x' ? 'X' : name[0].toUpperCase() + name.slice(1)}</a>)}
         </div>
       )}
     </div>
