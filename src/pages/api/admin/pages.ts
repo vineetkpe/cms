@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, putTextFile } from '../../../lib/github';
+import { getManagedPages, setManagedPages } from '../../../lib/cms-store';
 import { safePublicUrl, text } from '../../../lib/security';
 
 export const prerender = false;
-const PATH = 'src/data/pages.json';
 const KEYS = ['about', 'contact', 'editorialPolicy', 'privacy', 'terms', 'disclaimer'] as const;
 
 function cleanPages(input: any) {
@@ -32,8 +31,8 @@ export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    const file = await getTextFile(PATH);
-    return Response.json({ pages: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
+    const pages = await getManagedPages();
+    return Response.json({ pages, sha: 'kv', role: auth.role, storage: 'kv' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load pages.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -43,10 +42,10 @@ export const PUT: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin', 'editor']);
   if (!auth.ok) return authError(auth);
   try {
-    const { pages, sha } = await request.json();
+    const { pages } = await request.json();
     const clean = cleanPages(pages);
-    const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update trust and legal pages', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const version = await setManagedPages(clean);
+    return Response.json({ ok: true, version, storage: 'kv' });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update pages.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
