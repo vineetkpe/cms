@@ -4,14 +4,15 @@ import { marked } from 'marked';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import AdSlot from '../components/AdSlot.astro';
+import { getSiteSettings } from '../lib/cms-store';
 import { getPublishedPostBySlug, getPublishedPosts, getRelatedPosts, slugify } from '../lib/posts';
-import site from '../data/site.json';
 
 export const prerender = false;
 
 const slug = String(Astro.params.slug || '');
 const post = await getPublishedPostBySlug(slug);
 if (!post) return Astro.redirect('/404/');
+const site = await getSiteSettings();
 
 let Content: any = null;
 let articleHtml = '';
