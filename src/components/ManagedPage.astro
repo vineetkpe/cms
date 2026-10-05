@@ -1,6 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-const { page } = Astro.props;
+import { getManagedPages } from '../lib/cms-store';
+
+const { page: providedPage, pageKey } = Astro.props;
+const pages = pageKey ? await getManagedPages() as Record<string, any> : {};
+const page = providedPage || pages[String(pageKey || '')];
+if (!page) return Astro.redirect('/404/');
+
 const blocks = String(page.body || '').split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean).map((value) => {
   if (value.startsWith('## ')) return { type: 'h2', text: value.slice(3).trim() };
   const lines = value.split('\n').map((line) => line.trim()).filter(Boolean);
