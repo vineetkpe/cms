@@ -5,10 +5,10 @@ import { getPublishedPosts, slugify } from '../../lib/posts';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();
-  const tags = [...new Set(posts.flatMap((post) => post.data.tags))];
+  const tags = [...new Set(posts.flatMap((post) => post.data.tags as string[]))] as string[];
   return tags.map((name) => ({
     params: { tag: slugify(name) },
-    props: { name, posts: posts.filter((post) => post.data.tags.some((tag) => slugify(tag) === slugify(name))) }
+    props: { name, posts: posts.filter((post) => post.data.tags.some((tag: string) => slugify(tag) === slugify(name))) }
   }));
 }
 const { name, posts } = Astro.props;
