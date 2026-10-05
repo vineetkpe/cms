@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { deleteDbPost, getPostStatus, listDbPosts, moveDbPost } from '../../../lib/db-posts';
+import { addDbPostRevision, deleteDbPost, getPostStatus, listDbPosts, moveDbPost } from '../../../lib/db-posts';
 import type { AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
 
@@ -67,7 +67,7 @@ export const GET: APIRoute = async ({ request }) => {
     let posts = await listDbPosts();
     if (auth.role === 'author') posts = posts.filter((post) => ownedBy(post, auth.displayName));
     posts.sort((a, b) => String(b.publishAt || b.pubDate).localeCompare(String(a.publishAt || a.pubDate)));
-    return Response.json({ posts, admin: auth.username, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ posts, admin: auth.username, role: auth.role, storage: 'd1' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load posts.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -92,6 +92,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const status = getPostStatus(post);
     await moveDbPost(sourceSlug, post);
+    await addDbPostRevision(post, auth.displayName);
     return Response.json({ ok: true, slug: post.slug, status, storage: 'd1', commit: null });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to save post.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
