@@ -1,13 +1,10 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { deleteFile, getTextFile, listDirectory, putTextFile } from '../../../lib/github';
-import { parseMarkdown, toMarkdown, type AdminPost } from '../../../lib/markdown';
-import { decryptDraft, draftPath, DRAFT_DIR, encryptDraft } from '../../../lib/drafts';
+import { deleteDbPost, getPostStatus, listDbPosts, moveDbPost } from '../../../lib/db-posts';
+import type { AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
-import { removeScheduledPost, upsertScheduledPost } from '../../../lib/schedule-store';
 
 export const prerender = false;
-const DIR = 'src/content/posts';
 
 function cleanPost(input: Partial<AdminPost>): AdminPost {
   const slug = slugify(String(input.slug || input.title || ''));
@@ -55,64 +52,19 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     hideAds: Boolean(input.hideAds),
     faq,
     body: String(input.body),
-    sha: input.sha ? String(input.sha) : undefined
+    sha: undefined
   };
 }
 
-async function tryDelete(path: string, message: string) {
-  try {
-    const file = await getTextFile(path);
-    await deleteFile(path, file.sha, message);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function loadAllPosts() {
-  const published: AdminPost[] = [];
-  try {
-    const entries = await listDirectory(DIR);
-    const files = Array.isArray(entries) ? entries.filter((item) => item.type === 'file' && item.name.endsWith('.md')) : [];
-    for (const item of files) {
-      const file = await getTextFile(`${DIR}/${item.name}`);
-      published.push(parseMarkdown(file.text, item.name.replace(/\.md$/, ''), file.sha));
-    }
-  } catch {
-    // Empty repository is valid.
-  }
-
-  const bySlug = new Map(published.map((post) => [post.slug, post]));
-  try {
-    const draftEntries = await listDirectory(DRAFT_DIR);
-    const draftFiles = Array.isArray(draftEntries) ? draftEntries.filter((item) => item.type === 'file' && item.name.endsWith('.json')) : [];
-    for (const item of draftFiles) {
-      const file = await getTextFile(`${DRAFT_DIR}/${item.name}`);
-      const draft = await decryptDraft(file.text);
-      bySlug.set(draft.slug, draft);
-    }
-  } catch {
-    // Draft directory is created on first save.
-  }
-
-  return Array.from(bySlug.values());
-}
-
-function ownedBy(post: AdminPost | undefined, displayName: string) {
+function ownedBy(post: AdminPost | undefined | null, displayName: string) {
   return !post || String(post.author || '').trim().toLowerCase() === displayName.trim().toLowerCase();
-}
-
-function postStatus(post: AdminPost) {
-  if (post.draft) return 'draft';
-  const scheduled = post.publishAt ? Date.parse(post.publishAt) : Date.parse(`${post.pubDate}T00:00:00Z`);
-  return scheduled > Date.now() ? 'scheduled' : 'published';
 }
 
 export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    let posts = await loadAllPosts();
+    let posts = await listDbPosts();
     if (auth.role === 'author') posts = posts.filter((post) => ownedBy(post, auth.displayName));
     posts.sort((a, b) => String(b.publishAt || b.pubDate).localeCompare(String(a.publishAt || a.pubDate)));
     return Response.json({ posts, admin: auth.username, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
@@ -126,48 +78,21 @@ export const POST: APIRoute = async ({ request }) => {
   if (!auth.ok) return authError(auth);
   try {
     const post = cleanPost(await request.json());
-    const allPosts = auth.role === 'author' ? await loadAllPosts() : [];
+    const allPosts = await listDbPosts();
     const sourceSlug = post.originalSlug || post.slug;
+    const source = allPosts.find((item) => item.slug === sourceSlug);
+    const target = allPosts.find((item) => item.slug === post.slug && item.slug !== sourceSlug);
 
     if (auth.role === 'author') {
-      const source = allPosts.find((item) => item.slug === sourceSlug);
-      const target = allPosts.find((item) => item.slug === post.slug && item.slug !== sourceSlug);
       if (!ownedBy(source, auth.displayName) || !ownedBy(target, auth.displayName)) {
         return Response.json({ error: 'Authors can only edit their own articles.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
       }
       post.author = auth.displayName;
     }
 
-    const status = postStatus(post);
-
-    if (post.draft) {
-      await removeScheduledPost(post.slug).catch(() => {});
-      const path = await draftPath(post.slug);
-      let sha: string | undefined;
-      try { sha = (await getTextFile(path)).sha; } catch { /* first save */ }
-      const result = await putTextFile(path, await encryptDraft(post), `Save CMS draft: ${post.slug}`, sha);
-      if (post.originalSlug && post.originalSlug !== post.slug) {
-        await removeScheduledPost(post.originalSlug).catch(() => {});
-        await tryDelete(await draftPath(post.originalSlug), 'Move private CMS draft');
-      }
-      return Response.json({ ok: true, slug: post.slug, status, commit: result?.commit?.sha || null });
-    }
-
-    const path = `${DIR}/${post.slug}.md`;
-    let existingSha: string | undefined;
-    try { existingSha = (await getTextFile(path)).sha; } catch { /* new article */ }
-    const result = await putTextFile(path, toMarkdown({ ...post, draft: false }), status === 'scheduled' ? `Schedule: ${post.title}` : `Publish: ${post.title}`, existingSha);
-
-    if (status === 'scheduled' && post.publishAt) await upsertScheduledPost(post.slug, post.publishAt);
-    else await removeScheduledPost(post.slug).catch(() => {});
-
-    await tryDelete(await draftPath(post.slug), 'Remove published CMS draft');
-    if (post.originalSlug && post.originalSlug !== post.slug) {
-      await removeScheduledPost(post.originalSlug).catch(() => {});
-      await tryDelete(await draftPath(post.originalSlug), 'Remove moved CMS draft');
-      await tryDelete(`${DIR}/${post.originalSlug}.md`, `Move article: ${post.originalSlug} -> ${post.slug}`);
-    }
-    return Response.json({ ok: true, slug: post.slug, status, commit: result?.commit?.sha || null });
+    const status = getPostStatus(post);
+    await moveDbPost(sourceSlug, post);
+    return Response.json({ ok: true, slug: post.slug, status, storage: 'd1', commit: null });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to save post.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -181,17 +106,13 @@ export const DELETE: APIRoute = async ({ request }) => {
     const slug = slugify(String(body.slug || ''));
     if (!slug) throw new Error('Invalid slug.');
 
-    if (auth.role === 'author') {
-      const existing = (await loadAllPosts()).find((item) => item.slug === slug);
-      if (!existing || !ownedBy(existing, auth.displayName)) {
-        return Response.json({ error: 'Authors can only delete their own articles.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
-      }
+    const existing = (await listDbPosts()).find((item) => item.slug === slug);
+    if (auth.role === 'author' && (!existing || !ownedBy(existing, auth.displayName))) {
+      return Response.json({ error: 'Authors can only delete their own articles.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    const deletedPublished = await tryDelete(`${DIR}/${slug}.md`, `Delete article: ${slug}`);
-    const deletedDraft = await tryDelete(await draftPath(slug), 'Delete private CMS draft');
-    await removeScheduledPost(slug).catch(() => {});
-    if (!deletedPublished && !deletedDraft) throw new Error('Article was not found.');
+    const deleted = await deleteDbPost(slug);
+    if (!deleted) throw new Error('Article was not found.');
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to delete post.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
