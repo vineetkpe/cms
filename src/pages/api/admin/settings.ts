@@ -1,25 +1,15 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, putTextFile } from '../../../lib/github';
+import { getSiteSettings, setSiteSettings } from '../../../lib/cms-store';
 import { safePublicUrl, text } from '../../../lib/security';
 
 export const prerender = false;
-const PATH = 'src/data/site.json';
 const HEX = /^#[0-9a-f]{6}$/i;
 
 function safeOrigin(value: unknown) {
   const clean = safePublicUrl(value);
   if (!clean) throw new Error('Site URL must be a valid http/https URL.');
   return new URL(clean).origin;
-}
-
-function cleanExpiryDate(value: unknown) {
-  const raw = text(value, 32);
-  if (!raw) return '';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(`${raw}T00:00:00Z`))) {
-    throw new Error('GitHub token expiry must be a valid date.');
-  }
-  return raw;
 }
 
 function cleanTrendGeo(value: unknown) {
@@ -36,8 +26,8 @@ export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    const file = await getTextFile(PATH);
-    return Response.json({ settings: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
+    const settings = await getSiteSettings();
+    return Response.json({ settings, sha: 'kv', role: auth.role, storage: 'kv' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load settings.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -47,7 +37,7 @@ export const PUT: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin']);
   if (!auth.ok) return authError(auth);
   try {
-    const { settings, sha } = await request.json();
+    const { settings } = await request.json();
     if (!settings || typeof settings !== 'object') throw new Error('Invalid settings.');
 
     const primaryColor = String(settings.primaryColor || '');
@@ -107,7 +97,6 @@ export const PUT: APIRoute = async ({ request }) => {
       adsensePublisherId,
       adsenseArticleSlot: text(settings.adsenseArticleSlot, 30).replace(/\D/g, ''),
       adsenseSidebarSlot: text(settings.adsenseSidebarSlot, 30).replace(/\D/g, ''),
-      githubTokenExpiresAt: cleanExpiryDate(settings.githubTokenExpiresAt),
       contentNiche: text(settings.contentNiche || 'Jobs, careers, education and useful updates', 320),
       trendGeo: cleanTrendGeo(settings.trendGeo),
       trendKeywords: cleanTrendKeywords(settings.trendKeywords),
@@ -117,8 +106,8 @@ export const PUT: APIRoute = async ({ request }) => {
 
     if (!clean.name || !clean.tagline || !clean.description) throw new Error('Name, tagline and description are required.');
     if (!clean.contentNiche) throw new Error('Content niche is required for trend recommendations.');
-    const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update site settings', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const version = await setSiteSettings(clean);
+    return Response.json({ ok: true, version, storage: 'kv' });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update settings.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }

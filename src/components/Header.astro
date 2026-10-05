@@ -1,9 +1,8 @@
 ---
-import site from '../data/site.json';
-
+const { site } = Astro.props;
 const currentPath = Astro.url.pathname;
 const navItems = [
-  ...site.navigation,
+  ...(Array.isArray(site?.navigation) ? site.navigation : []),
   { label: 'Articles', href: '/articles/' }
 ].filter((item, index, items) => items.findIndex((candidate) => candidate.href === item.href) === index);
 

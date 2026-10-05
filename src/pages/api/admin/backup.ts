@@ -1,22 +1,25 @@
 import type { APIRoute } from 'astro';
 import { marked } from 'marked';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, listDirectory, putTextFile } from '../../../lib/github';
-import { parseMarkdown } from '../../../lib/markdown';
+import { getManagedPages, getPostTemplates, getRedirects, getSiteSettings, setManagedPages, setPostTemplates, setRedirects, setSiteSettings } from '../../../lib/cms-store';
+import { addDbPostRevision, listDbPosts, saveDbPost } from '../../../lib/db-posts';
+import { sanitizeBody, type AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
 import { contentLengthOkay } from '../../../lib/security';
 
 export const prerender = false;
-const POST_DIR = 'src/content/posts';
-const DATA_FILES = [
-  'src/data/site.json',
-  'src/data/pages.json',
-  'src/data/redirects.json',
-  'src/data/post-templates.json',
-];
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+const FORMAT = 'cms-portable-backup-v2';
 
-type BackupFile = { path: string; text: string };
+type PortableBackup = {
+  format: typeof FORMAT;
+  exportedAt: string;
+  posts: AdminPost[];
+  site: unknown;
+  pages: unknown;
+  redirects: unknown;
+  templates: unknown;
+};
 
 function cdata(value: unknown) {
   return `<![CDATA[${String(value ?? '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
@@ -32,46 +35,57 @@ function wpDate(value: string | undefined) {
   return date.toISOString().replace('T', ' ').slice(0, 19);
 }
 
-async function listPostFiles() {
-  try {
-    const entries = await listDirectory(POST_DIR);
-    return Array.isArray(entries) ? entries.filter((item: any) => item.type === 'file' && item.name.endsWith('.md')) : [];
-  } catch {
-    return [];
-  }
+function cleanRestoredPost(input: AdminPost): AdminPost {
+  const slug = slugify(String(input?.slug || input?.title || ''));
+  const title = String(input?.title || '').trim().slice(0, 180);
+  const description = String(input?.description || '').trim().slice(0, 320);
+  const body = sanitizeBody(String(input?.body || ''));
+  if (!slug || !title || !description || !body.trim()) throw new Error('Backup contains an invalid article.');
+  const pubDate = String(input.pubDate || new Date().toISOString().slice(0, 10));
+  if (Number.isNaN(Date.parse(pubDate))) throw new Error(`Invalid publish date for ${slug}.`);
+  const publishAt = input.publishAt ? new Date(input.publishAt).toISOString() : undefined;
+  return {
+    ...input,
+    slug,
+    originalSlug: undefined,
+    title,
+    description,
+    category: String(input.category || 'Guides').trim().slice(0, 80),
+    tags: Array.isArray(input.tags) ? input.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 20) : [],
+    author: String(input.author || 'Editorial Team').trim().slice(0, 100),
+    pubDate,
+    publishAt,
+    faq: Array.isArray(input.faq) ? input.faq.slice(0, 20).map((item) => ({
+      question: String(item?.question || '').trim().slice(0, 240),
+      answer: String(item?.answer || '').trim().slice(0, 1200),
+    })).filter((item) => item.question && item.answer) : [],
+    body,
+    sha: undefined,
+  };
 }
 
-async function collectBackupFiles() {
-  const files: BackupFile[] = [];
-  for (const item of await listPostFiles()) {
-    const path = `${POST_DIR}/${item.name}`;
-    const file = await getTextFile(path);
-    files.push({ path, text: file.text });
-  }
-  for (const path of DATA_FILES) {
-    try {
-      const file = await getTextFile(path);
-      files.push({ path, text: file.text });
-    } catch {
-      // Optional data file.
-    }
-  }
-  return files;
+async function snapshot(): Promise<PortableBackup> {
+  const [posts, site, pages, redirects, templates] = await Promise.all([
+    listDbPosts(),
+    getSiteSettings(),
+    getManagedPages(),
+    getRedirects(),
+    getPostTemplates(),
+  ]);
+  return { format: FORMAT, exportedAt: new Date().toISOString(), posts, site, pages, redirects, templates };
 }
 
 async function buildWxr() {
-  const siteFile = await getTextFile('src/data/site.json').catch(() => ({ text: '{}' } as any));
-  const site = JSON.parse(siteFile.text || '{}');
-  const siteUrl = String(site.url || 'https://example.com').replace(/\/$/, '');
-  const siteName = String(site.name || 'CMS Export');
-  const author = String(site.author || 'Editorial Team');
+  const backup = await snapshot();
+  const site = backup.site as any;
+  const siteUrl = String(site?.url || 'https://example.com').replace(/\/$/, '');
+  const siteName = String(site?.name || 'CMS Export');
+  const author = String(site?.author || 'Editorial Team');
   const items: string[] = [];
   let postId = 1;
 
-  for (const item of await listPostFiles()) {
-    const file = await getTextFile(`${POST_DIR}/${item.name}`);
-    const slug = item.name.replace(/\.md$/, '');
-    const post = parseMarkdown(file.text, slug, file.sha);
+  for (const post of backup.posts) {
+    const slug = post.slug;
     const publishedAt = post.publishAt || `${post.pubDate}T00:00:00.000Z`;
     const status = post.draft ? 'draft' : Date.parse(publishedAt) > Date.now() ? 'future' : 'publish';
     const html = String(marked.parse(post.body, { gfm: true, breaks: false }));
@@ -114,13 +128,10 @@ ${metas}
     postId += 1;
   }
 
-  try {
-    const pagesFile = await getTextFile('src/data/pages.json');
-    const pages = JSON.parse(pagesFile.text || '{}');
-    for (const [key, page] of Object.entries(pages as Record<string, any>)) {
-      const slug = slugify(key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`));
-      const html = String(marked.parse(String(page?.body || ''), { gfm: true }));
-      items.push(`<item>
+  for (const [key, page] of Object.entries((backup.pages || {}) as Record<string, any>)) {
+    const slug = slugify(key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`));
+    const html = String(marked.parse(String(page?.body || ''), { gfm: true }));
+    items.push(`<item>
 <title>${cdata(page?.title || key)}</title>
 <link>${xml(`${siteUrl}/${slug}/`)}</link>
 <pubDate>${new Date().toUTCString()}</pubDate>
@@ -142,10 +153,7 @@ ${metas}
 <wp:post_password></wp:post_password>
 <wp:is_sticky>0</wp:is_sticky>
 </item>`);
-      postId += 1;
-    }
-  } catch {
-    // Pages are optional in an export.
+    postId += 1;
   }
 
   return `<?xml version="1.0" encoding="UTF-8" ?>
@@ -158,19 +166,15 @@ ${metas}
 <channel>
 <title>${cdata(siteName)}</title>
 <link>${xml(siteUrl)}</link>
-<description>${cdata(site.description || '')}</description>
+<description>${cdata(site?.description || '')}</description>
 <pubDate>${new Date().toUTCString()}</pubDate>
-<language>${xml(site.language || 'en')}</language>
+<language>${xml(site?.language || 'en')}</language>
 <wp:wxr_version>1.2</wp:wxr_version>
 <wp:base_site_url>${xml(siteUrl)}</wp:base_site_url>
 <wp:base_blog_url>${xml(siteUrl)}</wp:base_blog_url>
 ${items.join('\n')}
 </channel>
 </rss>\n`;
-}
-
-function safeRestorePath(path: string) {
-  return path.startsWith(`${POST_DIR}/`) && path.endsWith('.md') || DATA_FILES.includes(path);
 }
 
 export const GET: APIRoute = async ({ request }) => {
@@ -189,14 +193,8 @@ export const GET: APIRoute = async ({ request }) => {
       });
     }
 
-    const files = await collectBackupFiles();
-    const payload = {
-      format: 'cms-portable-backup-v1',
-      exportedAt: new Date().toISOString(),
-      files,
-      notes: 'Text content and configuration backup. Media and code remain versioned in the Git repository.',
-    };
-    return new Response(`${JSON.stringify(payload, null, 2)}\n`, {
+    const backup = await snapshot();
+    return new Response(`${JSON.stringify({ ...backup, notes: 'Posts and CMS configuration are included. Media is stored separately in Cloudflare KV and is not embedded in this text backup.' }, null, 2)}\n`, {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Disposition': `attachment; filename="cms-backup-${new Date().toISOString().slice(0, 10)}.json"`,
@@ -214,30 +212,37 @@ export const POST: APIRoute = async ({ request }) => {
   if (!contentLengthOkay(request, MAX_IMPORT_BYTES)) return Response.json({ error: 'Backup is too large.' }, { status: 413 });
   try {
     const body = await request.json();
-    const backup = body?.backup;
+    const backup = body?.backup as PortableBackup;
     const confirm = body?.confirm === true;
     const overwrite = body?.overwrite === true;
-    if (!backup || backup.format !== 'cms-portable-backup-v1' || !Array.isArray(backup.files)) throw new Error('Unsupported backup format.');
-    const files = backup.files.slice(0, 1000).map((item: any) => ({ path: String(item?.path || ''), text: String(item?.text || '') }));
-    if (files.some((file: BackupFile) => !safeRestorePath(file.path))) throw new Error('Backup contains a path that is not allowed.');
+    if (!backup || backup.format !== FORMAT || !Array.isArray(backup.posts)) throw new Error('Unsupported backup format. Export a fresh backup from this CMS and try again.');
+    if (backup.posts.length > 1000) throw new Error('Backup contains too many posts.');
 
-    const conflicts: string[] = [];
-    const missing: string[] = [];
-    for (const file of files) {
-      try { await getTextFile(file.path); conflicts.push(file.path); } catch { missing.push(file.path); }
+    const cleanedPosts = backup.posts.map(cleanRestoredPost);
+    const existing = new Set((await listDbPosts()).map((post) => post.slug));
+    const conflicts = cleanedPosts.map((post) => post.slug).filter((slug) => existing.has(slug));
+    const newPosts = cleanedPosts.map((post) => post.slug).filter((slug) => !existing.has(slug));
+    if (!confirm) {
+      return Response.json({ dryRun: true, posts: cleanedPosts.length, existing: conflicts, newPosts, configuration: ['site', 'pages', 'redirects', 'templates'] });
     }
-    if (!confirm) return Response.json({ dryRun: true, files: files.length, existing: conflicts, newFiles: missing });
 
     const restored: string[] = [];
     const skipped: string[] = [];
-    for (const file of files) {
-      let sha: string | undefined;
-      try { sha = (await getTextFile(file.path)).sha; } catch { /* create */ }
-      if (sha && !overwrite) { skipped.push(file.path); continue; }
-      await putTextFile(file.path, file.text, `Restore CMS backup: ${file.path}`, sha);
-      restored.push(file.path);
+    for (const post of cleanedPosts) {
+      if (existing.has(post.slug) && !overwrite) { skipped.push(post.slug); continue; }
+      await saveDbPost(post);
+      await addDbPostRevision(post, auth.displayName);
+      restored.push(post.slug);
     }
-    return Response.json({ ok: true, restored, skipped });
+
+    await Promise.all([
+      setSiteSettings(backup.site || {}),
+      setManagedPages(backup.pages || {}),
+      setRedirects(Array.isArray(backup.redirects) ? backup.redirects : []),
+      setPostTemplates(Array.isArray(backup.templates) ? backup.templates : []),
+    ]);
+
+    return Response.json({ ok: true, restored, skipped, storage: 'd1+kv' });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to restore backup.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }

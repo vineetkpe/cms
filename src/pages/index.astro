@@ -1,12 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
+import { getSiteSettings } from '../lib/cms-store';
 import { getPublishedPosts, slugify } from '../lib/posts';
-import site from '../data/site.json';
 
 export const prerender = false;
 
-const posts = await getPublishedPosts();
+const [posts, site] = await Promise.all([getPublishedPosts(), getSiteSettings()]);
 const featured = posts.find((post) => post.data.featured) || posts[0];
 const remaining = posts.filter((post) => post.id !== featured?.id);
 const secondary = remaining.slice(0, 2);
@@ -43,7 +43,7 @@ const authorCount = new Set(posts.map((post) => post.data.author)).size;
   <div class="editorial-band">
     <div class="container editorial-band-inner">
       <div class="editorial-band-item"><strong>Clear editorial hierarchy</strong><span>Focused pages built for readers first.</span></div>
-      <div class="editorial-band-item"><strong>Fast by default</strong><span>Static-first publishing with no external font dependency.</span></div>
+      <div class="editorial-band-item"><strong>Fast by default</strong><span>Runtime publishing on Cloudflare with no rebuild needed for content.</span></div>
       <div class="editorial-band-item"><strong>Search-ready structure</strong><span>Canonical URLs, metadata, schema, archives and internal links.</span></div>
     </div>
   </div>

@@ -1,9 +1,8 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, putTextFile } from '../../../lib/github';
+import { getRedirects, setRedirects } from '../../../lib/cms-store';
 
 export const prerender = false;
-const PATH = 'src/data/redirects.json';
 const ALLOWED = new Set([301, 302, 303, 307, 308]);
 
 function cleanRedirects(input: unknown) {
@@ -27,8 +26,8 @@ export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    const file = await getTextFile(PATH);
-    return Response.json({ redirects: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
+    const redirects = cleanRedirects(await getRedirects());
+    return Response.json({ redirects, sha: 'kv', role: auth.role, storage: 'kv' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load redirects.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -38,10 +37,10 @@ export const PUT: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin', 'editor']);
   if (!auth.ok) return authError(auth);
   try {
-    const { redirects, sha } = await request.json();
+    const { redirects } = await request.json();
     const clean = cleanRedirects(redirects);
-    const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update redirects', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const version = await setRedirects(clean);
+    return Response.json({ ok: true, version, storage: 'kv' });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update redirects.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }

@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, putTextFile } from '../../../lib/github';
+import { getPostTemplates, setPostTemplates } from '../../../lib/cms-store';
 import { slugify } from '../../../lib/posts';
 
 export const prerender = false;
-const PATH = 'src/data/post-templates.json';
 
 type Template = { id: string; name: string; description: string; body: string };
 
@@ -30,8 +29,8 @@ export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    const file = await getTextFile(PATH);
-    return Response.json({ templates: cleanTemplates(JSON.parse(file.text)), sha: file.sha }, { headers: { 'Cache-Control': 'no-store' } });
+    const templates = cleanTemplates(await getPostTemplates());
+    return Response.json({ templates, sha: 'kv', storage: 'kv' }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load templates.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -41,10 +40,10 @@ export const PUT: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin', 'editor']);
   if (!auth.ok) return authError(auth);
   try {
-    const { templates, sha } = await request.json();
+    const { templates } = await request.json();
     const clean = cleanTemplates(templates);
-    const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update CMS post templates', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const version = await setPostTemplates(clean);
+    return Response.json({ ok: true, version, storage: 'kv' });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update templates.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }

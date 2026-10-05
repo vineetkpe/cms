@@ -1,17 +1,5 @@
 ---
 import ManagedPage from '../components/ManagedPage.astro';
-import pages from '../data/pages.json';
-import site from '../data/site.json';
+export const prerender = false;
 ---
-<ManagedPage page={pages.contact}>
-  <section class="contact-card" aria-labelledby="contact-email-title">
-    <div class="kicker">Direct contact</div>
-    <h2 id="contact-email-title">Email the publication</h2>
-    <p>For editorial questions, corrections or partnerships, contact us directly by email.</p>
-    <a href={`mailto:${site.email}`}>{site.email}</a>
-  </section>
-  <style>
-    .contact-card{margin-top:2rem;padding:1.4rem;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
-    .contact-card h2{margin:.35rem 0 .5rem;font-size:1.35rem}.contact-card p{margin:0 0 .8rem;color:var(--muted)}.contact-card a{color:var(--accent);font-weight:750}
-  </style>
-</ManagedPage>
+<ManagedPage pageKey="contact" />

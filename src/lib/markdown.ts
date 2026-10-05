@@ -72,9 +72,14 @@ export function toMarkdown(post: AdminPost) {
 }
 
 export function sanitizeBody(body: string) {
-  const forbidden = /<\s*script\b|javascript\s*:|on(?:load|error|click|mouseover|focus|submit)\s*=/i;
-  if (forbidden.test(body)) throw new Error('Unsafe script or event-handler markup is not allowed.');
-  return body;
+  const value = String(body || '');
+  if (/<\s*\/?\s*[a-z][^>]*>/i.test(value)) {
+    throw new Error('Raw HTML is not allowed in article content. Use Markdown instead.');
+  }
+  if (/\b(?:javascript|vbscript|data)\s*:/i.test(value) || /on[a-z]+\s*=/i.test(value)) {
+    throw new Error('Unsafe URL or event-handler markup is not allowed.');
+  }
+  return value;
 }
 
 export function parseMarkdown(text: string, slug: string, sha?: string): AdminPost {
@@ -125,7 +130,7 @@ export function parseMarkdown(text: string, slug: string, sha?: string): AdminPo
     featured: Boolean(meta.featured),
     hideAds: Boolean(meta.hideAds),
     faq,
-    body: match[2].trim(),
+    body: sanitizeBody(match[2].trim()),
     sha
   };
 }

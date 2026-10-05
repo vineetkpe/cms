@@ -1,9 +1,8 @@
 import type { APIRoute } from 'astro';
+import { getManagedPages, getSiteSettings } from '../lib/cms-store';
 import { getPublishedPosts, slugify } from '../lib/posts';
-import site from '../data/site.json';
-import pages from '../data/pages.json';
 
-export const prerender = true;
+export const prerender = false;
 type Entry = { loc: string; lastmod?: string };
 const managedPaths = [
   ['about', '/about/'],
@@ -13,17 +12,17 @@ const managedPaths = [
   ['terms', '/terms/'],
   ['disclaimer', '/disclaimer/'],
 ] as const;
-const staticPaths = [
-  '/', '/categories/', '/tags/', '/authors/', '/articles/',
-  ...managedPaths.filter(([key]) => !(pages as any)[key]?.noindex).map(([, path]) => path),
-];
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const perPage = 18;
 
 export const GET: APIRoute = async () => {
-  const posts = await getPublishedPosts();
+  const [posts, site, pages] = await Promise.all([getPublishedPosts(), getSiteSettings(), getManagedPages()]);
+  const staticPaths = [
+    '/', '/categories/', '/tags/', '/authors/', '/articles/',
+    ...managedPaths.filter(([key]) => !(pages as any)[key]?.noindex).map(([, path]) => path),
+  ];
   const categories = [...new Set(posts.map((post) => post.data.category))];
-  const tags = [...new Set(posts.flatMap((post) => post.data.tags))];
+  const tags = [...new Set(posts.flatMap((post) => post.data.tags as string[]))] as string[];
   const authors = [...new Set(posts.map((post) => post.data.author))];
   const archivePages = Math.ceil(posts.length / perPage);
   const entries: Entry[] = [
@@ -35,5 +34,5 @@ export const GET: APIRoute = async () => {
     ...posts.filter((post) => !post.data.noindex).map((post) => ({ loc: new URL(`/${post.id.replace(/\.md$/, '')}/`, site.url).toString(), lastmod: (post.data.updatedDate || post.data.pubDate).toISOString().slice(0, 10) }))
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map((entry) => `  <url><loc>${escapeXml(entry.loc)}</loc>${entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ''}</url>`).join('\n')}\n</urlset>\n`;
-  return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+  return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' } });
 };

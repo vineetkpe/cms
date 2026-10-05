@@ -1,5 +1,5 @@
 ---
 import ManagedPage from '../components/ManagedPage.astro';
-import pages from '../data/pages.json';
+export const prerender = false;
 ---
-<ManagedPage page={pages.about} />
+<ManagedPage pageKey="about" />

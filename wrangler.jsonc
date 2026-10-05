@@ -16,10 +16,6 @@
   "ai": {
     "binding": "AI"
   },
-  "vars": {
-    "CMS_GITHUB_REPO": "vineetkpe/cms",
-    "CMS_GITHUB_BRANCH": "main"
-  },
   "d1_databases": [
     {
       "binding": "DB",
