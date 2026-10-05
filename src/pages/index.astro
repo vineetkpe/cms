@@ -4,6 +4,8 @@ import PostCard from '../components/PostCard.astro';
 import { getPublishedPosts, slugify } from '../lib/posts';
 import site from '../data/site.json';
 
+export const prerender = false;
+
 const posts = await getPublishedPosts();
 const featured = posts.find((post) => post.data.featured) || posts[0];
 const remaining = posts.filter((post) => post.id !== featured?.id);
