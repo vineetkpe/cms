@@ -5,7 +5,7 @@ export type CmsPostStatus = 'draft' | 'scheduled' | 'published';
 
 type D1Statement = {
   bind(...values: unknown[]): D1Statement;
-  run(): Promise<unknown>;
+  run(): Promise<{ meta?: { changes?: number; last_row_id?: number } } | unknown>;
   first<T = Record<string, unknown>>(): Promise<T | null>;
   all<T = Record<string, unknown>>(): Promise<{ results?: T[] }>;
 };
@@ -16,6 +16,15 @@ type PostRow = {
   slug: string;
   payload_json: string;
   status: CmsPostStatus;
+};
+
+type RevisionRow = {
+  id: number;
+  slug: string;
+  saved_at: number;
+  saved_by: string;
+  status: CmsPostStatus;
+  payload_json: string;
 };
 
 function db(): D1Binding {
@@ -82,6 +91,45 @@ export async function moveDbPost(oldSlug: string, post: AdminPost) {
     await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(oldSlug).run();
   }
   return saveDbPost(post);
+}
+
+export async function addDbPostRevision(post: AdminPost, savedBy: string) {
+  const status = getPostStatus(post);
+  const savedAt = Math.floor(Date.now() / 1000);
+  const payload = JSON.stringify({ ...post, draft: status === 'draft', sha: undefined });
+  await db().prepare(`INSERT INTO cms_post_revisions
+    (slug, saved_at, saved_by, status, payload_json)
+    VALUES (?, ?, ?, ?, ?)`)
+    .bind(post.slug, savedAt, savedBy, status, payload)
+    .run();
+  return savedAt;
+}
+
+export async function listDbPostRevisions(slug: string, limit = 30) {
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+  const result = await db()
+    .prepare(`SELECT id, slug, saved_at, saved_by, status, payload_json
+      FROM cms_post_revisions WHERE slug = ? ORDER BY saved_at DESC, id DESC LIMIT ?`)
+    .bind(slug, safeLimit)
+    .all<RevisionRow>();
+  return result.results || [];
+}
+
+export async function getDbPostRevision(id: number) {
+  return db()
+    .prepare(`SELECT id, slug, saved_at, saved_by, status, payload_json
+      FROM cms_post_revisions WHERE id = ? LIMIT 1`)
+    .bind(id)
+    .first<RevisionRow>();
+}
+
+export async function restoreDbPostRevision(id: number) {
+  const revision = await getDbPostRevision(id);
+  if (!revision) return null;
+  const post = JSON.parse(revision.payload_json) as AdminPost;
+  const restored = { ...post, slug: revision.slug, draft: revision.status === 'draft', sha: undefined };
+  await saveDbPost(restored);
+  return restored;
 }
 
 export async function publishDueDbPosts(now = Date.now()) {
