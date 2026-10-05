@@ -1,21 +1,37 @@
 ---
 import { render } from 'astro:content';
+import { marked } from 'marked';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import AdSlot from '../components/AdSlot.astro';
-import { getPublishedPosts, getRelatedPosts, slugify, type PostEntry } from '../lib/posts';
+import { getPublishedPostBySlug, getPublishedPosts, getRelatedPosts, slugify } from '../lib/posts';
 import site from '../data/site.json';
 
-export async function getStaticPaths() {
-  const posts = await getPublishedPosts();
-  return posts.map((post) => ({ params: { slug: post.id.replace(/\.md$/, '') }, props: { post } }));
+export const prerender = false;
+
+const slug = String(Astro.params.slug || '');
+const post = await getPublishedPostBySlug(slug);
+if (!post) return Astro.redirect('/404/');
+
+let Content: any = null;
+let articleHtml = '';
+let headings: Array<{ depth: number; slug: string; text: string }> = [];
+if (post.__d1) {
+  articleHtml = await marked.parse(String(post.body || ''));
+  headings = String(post.body || '').split('\n').flatMap((line) => {
+    const match = line.match(/^(#{2,3})\s+(.+?)\s*#*\s*$/);
+    if (!match) return [];
+    const text = match[2].replace(/[*_`~\[\]]/g, '').trim();
+    return [{ depth: match[1].length, slug: slugify(text), text }];
+  });
+} else {
+  const rendered = await render(post);
+  Content = rendered.Content;
+  headings = rendered.headings;
 }
 
-const { post } = Astro.props as { post: PostEntry };
-const { Content, headings } = await render(post);
 const allPosts = await getPublishedPosts();
 const related = getRelatedPosts(post, allPosts, 3);
-const slug = post.id.replace(/\.md$/, '');
 const categorySlug = slugify(post.data.category);
 const authorSlug = slugify(post.data.author);
 const canonical = post.data.canonical || new URL(`/${slug}/`, site.url).toString();
@@ -53,7 +69,7 @@ const breadcrumbSchema = {
 const faqSchema = post.data.faq.length ? {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: post.data.faq.map((item) => ({
+  mainEntity: post.data.faq.map((item: { question: string; answer: string }) => ({
     '@type': 'Question',
     name: item.question,
     acceptedAnswer: { '@type': 'Answer', text: item.answer }
@@ -105,7 +121,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
         </figure>
       )}
 
-      <div class="article-content"><Content /></div>
+      {post.__d1 ? <div class="article-content" set:html={articleHtml} /> : <div class="article-content"><Content /></div>}
 
       {showInlineAd && <AdSlot slot={site.adsenseArticleSlot} />}
 
@@ -113,7 +129,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
         <section class="faq-section" aria-labelledby="faq-title">
           <div class="kicker">Quick answers</div>
           <h2 id="faq-title">Frequently asked questions</h2>
-          {post.data.faq.map((item) => <details><summary>{item.question}</summary><p>{item.answer}</p></details>)}
+          {post.data.faq.map((item: { question: string; answer: string }) => <details><summary>{item.question}</summary><p>{item.answer}</p></details>)}
         </section>
       )}
 
@@ -124,7 +140,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
 
       {post.data.tags.length > 0 && (
         <div class="tag-list" aria-label="Article tags">
-          {post.data.tags.map((tag) => <a href={`/tag/${slugify(tag)}/`}>{tag}</a>)}
+          {post.data.tags.map((tag: string) => <a href={`/tag/${slugify(tag)}/`}>{tag}</a>)}
         </div>
       )}
 
