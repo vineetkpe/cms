@@ -3,7 +3,7 @@ import { marked } from 'marked';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { getManagedPages, getPostTemplates, getRedirects, getSiteSettings, setManagedPages, setPostTemplates, setRedirects, setSiteSettings } from '../../../lib/cms-store';
 import { addDbPostRevision, listDbPosts, saveDbPost } from '../../../lib/db-posts';
-import type { AdminPost } from '../../../lib/markdown';
+import { sanitizeBody, type AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
 import { contentLengthOkay } from '../../../lib/security';
 
@@ -33,6 +33,35 @@ function wpDate(value: string | undefined) {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.valueOf())) return '1970-01-01 00:00:00';
   return date.toISOString().replace('T', ' ').slice(0, 19);
+}
+
+function cleanRestoredPost(input: AdminPost): AdminPost {
+  const slug = slugify(String(input?.slug || input?.title || ''));
+  const title = String(input?.title || '').trim().slice(0, 180);
+  const description = String(input?.description || '').trim().slice(0, 320);
+  const body = sanitizeBody(String(input?.body || ''));
+  if (!slug || !title || !description || !body.trim()) throw new Error('Backup contains an invalid article.');
+  const pubDate = String(input.pubDate || new Date().toISOString().slice(0, 10));
+  if (Number.isNaN(Date.parse(pubDate))) throw new Error(`Invalid publish date for ${slug}.`);
+  const publishAt = input.publishAt ? new Date(input.publishAt).toISOString() : undefined;
+  return {
+    ...input,
+    slug,
+    originalSlug: undefined,
+    title,
+    description,
+    category: String(input.category || 'Guides').trim().slice(0, 80),
+    tags: Array.isArray(input.tags) ? input.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 20) : [],
+    author: String(input.author || 'Editorial Team').trim().slice(0, 100),
+    pubDate,
+    publishAt,
+    faq: Array.isArray(input.faq) ? input.faq.slice(0, 20).map((item) => ({
+      question: String(item?.question || '').trim().slice(0, 240),
+      answer: String(item?.answer || '').trim().slice(0, 1200),
+    })).filter((item) => item.question && item.answer) : [],
+    body,
+    sha: undefined,
+  };
 }
 
 async function snapshot(): Promise<PortableBackup> {
@@ -189,20 +218,20 @@ export const POST: APIRoute = async ({ request }) => {
     if (!backup || backup.format !== FORMAT || !Array.isArray(backup.posts)) throw new Error('Unsupported backup format. Export a fresh backup from this CMS and try again.');
     if (backup.posts.length > 1000) throw new Error('Backup contains too many posts.');
 
+    const cleanedPosts = backup.posts.map(cleanRestoredPost);
     const existing = new Set((await listDbPosts()).map((post) => post.slug));
-    const conflicts = backup.posts.map((post) => post.slug).filter((slug) => existing.has(slug));
-    const newPosts = backup.posts.map((post) => post.slug).filter((slug) => !existing.has(slug));
+    const conflicts = cleanedPosts.map((post) => post.slug).filter((slug) => existing.has(slug));
+    const newPosts = cleanedPosts.map((post) => post.slug).filter((slug) => !existing.has(slug));
     if (!confirm) {
-      return Response.json({ dryRun: true, posts: backup.posts.length, existing: conflicts, newPosts, configuration: ['site', 'pages', 'redirects', 'templates'] });
+      return Response.json({ dryRun: true, posts: cleanedPosts.length, existing: conflicts, newPosts, configuration: ['site', 'pages', 'redirects', 'templates'] });
     }
 
     const restored: string[] = [];
     const skipped: string[] = [];
-    for (const post of backup.posts) {
-      if (!post?.slug || !post?.title || !post?.body) continue;
+    for (const post of cleanedPosts) {
       if (existing.has(post.slug) && !overwrite) { skipped.push(post.slug); continue; }
-      await saveDbPost({ ...post, sha: undefined });
-      await addDbPostRevision({ ...post, sha: undefined }, auth.displayName);
+      await saveDbPost(post);
+      await addDbPostRevision(post, auth.displayName);
       restored.push(post.slug);
     }
 
