@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
 import { addDbPostRevision, deleteDbPost, getPostStatus, listDbPosts, moveDbPost } from '../../../lib/db-posts';
-import type { AdminPost } from '../../../lib/markdown';
+import { sanitizeBody, type AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
 
 export const prerender = false;
@@ -51,7 +51,7 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     featured: Boolean(input.featured),
     hideAds: Boolean(input.hideAds),
     faq,
-    body: String(input.body),
+    body: sanitizeBody(String(input.body)),
     sha: undefined
   };
 }
