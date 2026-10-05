@@ -3,15 +3,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedPosts, slugify } from '../../lib/posts';
 
-export async function getStaticPaths() {
-  const posts = await getPublishedPosts();
-  const authors = [...new Set(posts.map((post) => post.data.author))];
-  return authors.map((name) => ({
-    params: { author: slugify(name) },
-    props: { name, posts: posts.filter((post) => post.data.author === name) }
-  }));
-}
-const { name, posts } = Astro.props;
+export const prerender = false;
+
+const authorSlug = String(Astro.params.author || '');
+const allPosts = await getPublishedPosts();
+const posts = allPosts.filter((post) => slugify(post.data.author) === authorSlug);
+if (!posts.length) return Astro.redirect('/404/');
+const name = posts[0].data.author;
 const schema = { '@context': 'https://schema.org', '@type': 'Person', name };
 ---
 <BaseLayout title={name} description={`Articles written by ${name}.`} schema={schema}>
