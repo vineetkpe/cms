@@ -82,12 +82,14 @@ export async function saveDbPost(post: AdminPost) {
 export async function deleteDbPost(slug: string) {
   const existing = await getDbPost(slug);
   if (!existing) return false;
+  await db().prepare('DELETE FROM cms_post_revisions WHERE slug = ?').bind(slug).run();
   await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(slug).run();
   return true;
 }
 
 export async function moveDbPost(oldSlug: string, post: AdminPost) {
   if (oldSlug && oldSlug !== post.slug) {
+    await db().prepare('UPDATE cms_post_revisions SET slug = ? WHERE slug = ?').bind(post.slug, oldSlug).run();
     await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(oldSlug).run();
   }
   return saveDbPost(post);
