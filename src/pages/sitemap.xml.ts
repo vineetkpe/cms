@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 import { getPublishedPosts, slugify } from '../lib/posts';
 import { getSiteSettings } from '../lib/site-settings';
 import { getManagedPages } from '../lib/managed-pages';
@@ -18,8 +19,15 @@ const managedPaths = [
 const baseStaticPaths = ['/', '/categories/', '/tags/', '/authors/', '/articles/'];
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const perPage = 18;
+type KVBinding = { get(key: string): Promise<string | null>; put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> };
+const CACHE_KEY = 'cms:public:sitemap:v1';
 
 export const GET: APIRoute = async () => {
+  const kv = (env as any).CMS_KV as KVBinding | undefined;
+  if (kv) {
+    const cached = await kv.get(CACHE_KEY).catch(() => null);
+    if (cached) return new Response(cached, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-CMS-Cache': 'HIT' } });
+  }
   const [site, posts, pages] = await Promise.all([getSiteSettings(), getPublishedPosts(), getManagedPages()]);
   const staticPaths = [
     ...baseStaticPaths,
@@ -38,5 +46,6 @@ export const GET: APIRoute = async () => {
     ...posts.filter((post) => !post.data.noindex).map((post) => ({ loc: new URL(`/${post.id.replace(/\.md$/, '')}/`, site.url).toString(), lastmod: (post.data.updatedDate || post.data.pubDate).toISOString().slice(0, 10) }))
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map((entry) => `  <url><loc>${escapeXml(entry.loc)}</loc>${entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ''}</url>`).join('\n')}\n</urlset>\n`;
-  return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+  if (kv) await kv.put(CACHE_KEY, xml, { expirationTtl: 3600 }).catch(() => {});
+  return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-CMS-Cache': 'MISS' } });
 };

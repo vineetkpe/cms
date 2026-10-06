@@ -12,6 +12,27 @@ type D1Statement = {
 
 type D1Binding = { prepare(query: string): D1Statement };
 
+type KVBinding = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  delete(key: string): Promise<void>;
+};
+
+type TaxonomySnapshot = {
+  total: number;
+  categories: TaxonomyCount[];
+  authors: TaxonomyCount[];
+  tags: TaxonomyCount[];
+};
+
+const TAXONOMY_CACHE_KEY = 'cms:public:taxonomy:v1';
+const PUBLIC_CACHE_KEYS = [
+  TAXONOMY_CACHE_KEY,
+  'cms:public:search-index:v1',
+  'cms:public:sitemap:v1',
+  'cms:public:rss:v1',
+];
+
 type RevisionRow = {
   id: number;
   slug: string;
@@ -38,6 +59,59 @@ function db(): D1Binding {
   const binding = (env as any).DB as D1Binding | undefined;
   if (!binding) throw new Error('DB is not configured.');
   return binding;
+}
+
+function kv(): KVBinding | null {
+  return ((env as any).CMS_KV as KVBinding | undefined) || null;
+}
+
+async function invalidatePublicCaches() {
+  const binding = kv();
+  if (!binding) return;
+  await Promise.all(PUBLIC_CACHE_KEYS.map((key) => binding.delete(key).catch(() => {})));
+}
+
+async function taxonomySnapshot(): Promise<TaxonomySnapshot> {
+  const binding = kv();
+  if (binding) {
+    const cached = await binding.get(TAXONOMY_CACHE_KEY).catch(() => null);
+    if (cached) {
+      try { return JSON.parse(cached) as TaxonomySnapshot; } catch {}
+    }
+  }
+
+  const [totalRow, categoryRows, authorRows, tagRows] = await Promise.all([
+    db().prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published'").first<{ count: number }>(),
+    db().prepare(`SELECT category AS name, category_slug AS slug, COUNT(*) AS count, MAX(sort_at) AS latest
+      FROM cms_posts
+      WHERE status = 'published' AND category_slug IS NOT NULL AND category_slug <> ''
+      GROUP BY category_slug, category
+      ORDER BY count DESC, name ASC`).all<{ name: string; slug: string; count: number; latest: string }>(),
+    db().prepare(`SELECT author AS name, author_slug AS slug, COUNT(*) AS count, MAX(sort_at) AS latest
+      FROM cms_posts
+      WHERE status = 'published' AND author_slug IS NOT NULL AND author_slug <> ''
+      GROUP BY author_slug, author
+      ORDER BY count DESC, name ASC`).all<{ name: string; slug: string; count: number; latest: string }>(),
+    db().prepare(`SELECT t.tag AS name, t.tag_slug AS slug, COUNT(*) AS count, MAX(p.sort_at) AS latest
+      FROM cms_post_tags t
+      JOIN cms_posts p ON p.slug = t.post_slug
+      WHERE p.status = 'published'
+      GROUP BY t.tag_slug, t.tag
+      ORDER BY count DESC, name ASC`).all<{ name: string; slug: string; count: number; latest: string }>(),
+  ]);
+
+  const normalize = (rows: Array<{ name: string; slug: string; count: number; latest?: string }>) =>
+    rows.map((row) => ({ ...row, count: Number(row.count || 0) }));
+
+  const snapshot: TaxonomySnapshot = {
+    total: Number(totalRow?.count || 0),
+    categories: normalize(categoryRows.results || []),
+    authors: normalize(authorRows.results || []),
+    tags: normalize(tagRows.results || []),
+  };
+
+  if (binding) await binding.put(TAXONOMY_CACHE_KEY, JSON.stringify(snapshot), { expirationTtl: 3600 }).catch(() => {});
+  return snapshot;
 }
 
 function indexSlug(value: string) {
@@ -104,12 +178,8 @@ export async function listPublishedDbPosts(limit = 18, offset = 0): Promise<Admi
 }
 
 export async function countPublishedDbPosts(): Promise<number> {
-  const row = await db()
-    .prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published'")
-    .first<{ count: number }>();
-  return Number(row?.count || 0);
+  return (await taxonomySnapshot()).total;
 }
-
 export async function getFeaturedDbPost(): Promise<AdminPost | null> {
   const row = await db()
     .prepare(`SELECT slug, payload_json, status
@@ -134,13 +204,8 @@ export async function listPublishedDbPostsByCategory(categorySlug: string, limit
 }
 
 export async function countPublishedDbPostsByCategory(categorySlug: string): Promise<number> {
-  const row = await db()
-    .prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published' AND category_slug = ?")
-    .bind(categorySlug)
-    .first<{ count: number }>();
-  return Number(row?.count || 0);
+  return (await taxonomySnapshot()).categories.find((item) => item.slug === categorySlug)?.count || 0;
 }
-
 export async function listPublishedDbPostsByAuthor(authorSlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
   const result = await db()
     .prepare(`SELECT slug, payload_json, status
@@ -154,13 +219,8 @@ export async function listPublishedDbPostsByAuthor(authorSlug: string, limit = 2
 }
 
 export async function countPublishedDbPostsByAuthor(authorSlug: string): Promise<number> {
-  const row = await db()
-    .prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published' AND author_slug = ?")
-    .bind(authorSlug)
-    .first<{ count: number }>();
-  return Number(row?.count || 0);
+  return (await taxonomySnapshot()).authors.find((item) => item.slug === authorSlug)?.count || 0;
 }
-
 export async function listPublishedDbPostsByTag(tagSlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
   const result = await db()
     .prepare(`SELECT p.slug, p.payload_json, p.status
@@ -175,50 +235,17 @@ export async function listPublishedDbPostsByTag(tagSlug: string, limit = 24, off
 }
 
 export async function countPublishedDbPostsByTag(tagSlug: string): Promise<number> {
-  const row = await db()
-    .prepare(`SELECT COUNT(*) AS count
-      FROM cms_post_tags t INDEXED BY idx_cms_post_tags_tag
-      JOIN cms_posts p ON p.slug = t.post_slug
-      WHERE t.tag_slug = ? AND p.status = 'published'`)
-    .bind(tagSlug)
-    .first<{ count: number }>();
-  return Number(row?.count || 0);
+  return (await taxonomySnapshot()).tags.find((item) => item.slug === tagSlug)?.count || 0;
 }
-
 export async function listPublishedDbCategories(): Promise<TaxonomyCount[]> {
-  const result = await db()
-    .prepare(`SELECT category AS name, category_slug AS slug, COUNT(*) AS count, MAX(sort_at) AS latest
-      FROM cms_posts
-      WHERE status = 'published' AND category_slug IS NOT NULL AND category_slug <> ''
-      GROUP BY category_slug, category
-      ORDER BY count DESC, name ASC`)
-    .all<{ name: string; slug: string; count: number; latest: string }>();
-  return (result.results || []).map((row) => ({ ...row, count: Number(row.count || 0) }));
+  return (await taxonomySnapshot()).categories;
 }
-
 export async function listPublishedDbAuthors(): Promise<TaxonomyCount[]> {
-  const result = await db()
-    .prepare(`SELECT author AS name, author_slug AS slug, COUNT(*) AS count, MAX(sort_at) AS latest
-      FROM cms_posts
-      WHERE status = 'published' AND author_slug IS NOT NULL AND author_slug <> ''
-      GROUP BY author_slug, author
-      ORDER BY count DESC, name ASC`)
-    .all<{ name: string; slug: string; count: number; latest: string }>();
-  return (result.results || []).map((row) => ({ ...row, count: Number(row.count || 0) }));
+  return (await taxonomySnapshot()).authors;
 }
-
 export async function listPublishedDbTags(): Promise<TaxonomyCount[]> {
-  const result = await db()
-    .prepare(`SELECT t.tag AS name, t.tag_slug AS slug, COUNT(*) AS count, MAX(p.sort_at) AS latest
-      FROM cms_post_tags t
-      JOIN cms_posts p ON p.slug = t.post_slug
-      WHERE p.status = 'published'
-      GROUP BY t.tag_slug, t.tag
-      ORDER BY count DESC, name ASC`)
-    .all<{ name: string; slug: string; count: number; latest: string }>();
-  return (result.results || []).map((row) => ({ ...row, count: Number(row.count || 0) }));
+  return (await taxonomySnapshot()).tags;
 }
-
 export async function getRelatedDbPosts(post: AdminPost, limit = 3): Promise<AdminPost[]> {
   const wanted = safeLimit(limit, 3, 8);
   const seen = new Map<string, AdminPost>();
@@ -304,6 +331,7 @@ export async function saveDbPost(post: AdminPost) {
       .run();
   }
 
+  await invalidatePublicCaches();
   return status;
 }
 
@@ -312,6 +340,7 @@ export async function deleteDbPost(slug: string) {
   if (!existing) return false;
   await db().prepare('DELETE FROM cms_post_tags WHERE post_slug = ?').bind(slug).run();
   await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(slug).run();
+  await invalidatePublicCaches();
   return true;
 }
 
@@ -409,5 +438,6 @@ export async function publishDueDbPosts(now = Date.now()) {
       .bind(Math.floor(now / 1000), slug)
       .run();
   }
+  await invalidatePublicCaches();
   return { triggered: slugs.length, slugs };
 }
