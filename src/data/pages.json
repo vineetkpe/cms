@@ -1,38 +1,10 @@
 {
-  "about": {
-    "title": "About",
-    "description": "About this publication.",
-    "kicker": "Publication",
-    "body": "This publication focuses on useful, clearly written information. Replace this text with your real mission, ownership, editorial team and what readers can expect.\n\n## Our approach\n\nExplain how you research, review and update content so readers understand your standards."
-  },
-  "contact": {
-    "title": "Contact",
-    "description": "How to contact this publication.",
-    "kicker": "Get in touch",
-    "body": "Use this page for editorial questions, corrections, partnerships and general enquiries. Add your preferred contact details before launch."
-  },
-  "editorialPolicy": {
-    "title": "Editorial Policy",
-    "description": "How this publication creates and reviews content.",
-    "kicker": "Standards",
-    "body": "Describe how topics are selected, researched, reviewed and updated. State how corrections are handled and how commercial relationships are kept separate from editorial decisions."
-  },
-  "privacy": {
-    "title": "Privacy Policy",
-    "description": "Privacy information for this website.",
-    "kicker": "Legal",
-    "body": "Replace this starter text with a privacy policy that accurately reflects the analytics, advertising, cookies, forms and third-party services you actually use."
-  },
-  "terms": {
-    "title": "Terms of Use",
-    "description": "Terms for using this website.",
-    "kicker": "Legal",
-    "body": "Replace this starter text with terms appropriate for your publication, jurisdiction and services before launch."
-  },
-  "disclaimer": {
-    "title": "Disclaimer",
-    "description": "Important information about this publication.",
-    "kicker": "Legal",
-    "body": "Content is provided for general informational purposes. Replace this starter disclaimer with wording appropriate for the topics you publish and the claims you make."
-  }
+  "about":{"title":"About","description":"About this publication and how it helps readers.","kicker":"Publication","body":"We publish practical updates and explainers about jobs, exams, results, scholarships and public schemes. Our goal is to help readers understand what changed, who it affects and what to check next.\n\n## What we publish\n\n- Job and recruitment updates\n- Exam notices, dates and admit-card information\n- Result announcements\n- Scholarship opportunities\n- Public scheme explainers\n\n## Our approach\n\nWe aim to use clear language, link to official sources when available and keep important dates or eligibility details easy to find."},
+  "contact":{"title":"Contact","description":"Contact the publication for corrections, questions or partnerships.","kicker":"Get in touch","body":"Use this page for editorial questions, correction requests, partnerships or general enquiries.\n\n## Reporting an error\n\nPlease include the article URL and the detail you believe needs correction so it can be reviewed quickly."},
+  "editorialPolicy":{"title":"Editorial Policy","description":"How this publication researches, writes and updates content.","kicker":"Standards","body":"Our editorial goal is to publish useful, understandable information based on reliable sources.\n\n## Sourcing\n\nWe prefer official notices, government or institutional websites, primary documents and direct announcements when available.\n\n## Writing and review\n\nArticles should separate confirmed facts from interpretation, avoid misleading headlines and clearly present important dates, eligibility rules and official links.\n\n## Updates\n\nWhen information changes, articles may be revised and their updated date changed."},
+  "correctionsPolicy":{"title":"Corrections Policy","description":"How this publication handles corrections, clarifications and updates.","kicker":"Trust & accuracy","body":"We aim to keep published information accurate and current. When a material error is identified, we review the source information and correct the article as soon as practical.\n\n## What we correct\n\nWe correct factual errors, outdated dates, broken eligibility details, inaccurate links and other information that could mislead a reader.\n\n## Report an issue\n\nReaders can use the Contact page to report a possible error. Please include the article URL and the detail that needs review."},
+  "advertisingPolicy":{"title":"Advertising & Disclosure Policy","description":"How advertising, sponsorships and commercial relationships are handled.","kicker":"Transparency","body":"Editorial content and advertising are kept separate. Advertising or sponsored material should not determine the conclusions of an editorial article.\n\n## Advertising\n\nThe site may display third-party advertising. Ads should be visually distinguishable from editorial content.\n\n## Sponsored or affiliate relationships\n\nIf the site uses affiliate links, paid placements or sponsored content, those relationships should be disclosed clearly near the relevant content."},
+  "privacy":{"title":"Privacy Policy","description":"Privacy information for visitors to this website.","kicker":"Legal","body":"This site may process standard technical information needed to deliver pages securely and reliably. If analytics, advertising or third-party services are enabled, they may process additional information according to their own policies.\n\n## Analytics and advertising\n\nThe site settings may enable analytics or advertising services. When used, those services should be disclosed accurately and configured in line with applicable requirements.\n\n## Contact\n\nFor privacy questions, use the Contact page."},
+  "terms":{"title":"Terms of Use","description":"Terms for using this website and its published information.","kicker":"Legal","body":"By using this website, you agree to use the information responsibly and to verify important application, eligibility, fee and deadline details with the official issuing authority.\n\n## Informational purpose\n\nPublished content is intended to help readers understand public information and does not replace an official notification or authority website.\n\n## Availability\n\nWe may update, correct or remove content when information changes."},
+  "disclaimer":{"title":"Disclaimer","description":"Important information about the scope and limitations of this publication.","kicker":"Legal","body":"Content is provided for general informational purposes. Job, exam, result, scholarship and scheme details can change, and official authorities remain the final source for eligibility, deadlines, fees, results and application requirements.\n\nAlways verify critical information using the official source before taking action."}
 }

@@ -9,6 +9,8 @@ const managedPaths = [
   ['about', '/about/'],
   ['contact', '/contact/'],
   ['editorialPolicy', '/editorial-policy/'],
+  ['correctionsPolicy', '/corrections-policy/'],
+  ['advertisingPolicy', '/advertising-policy/'],
   ['privacy', '/privacy/'],
   ['terms', '/terms/'],
   ['disclaimer', '/disclaimer/'],

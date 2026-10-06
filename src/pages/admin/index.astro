@@ -47,7 +47,7 @@ export const prerender = true;
 
   <main class="workspace">
     <header class="topbar">
-      <div class="titleblock"><h1>Overview</h1><p>Content performance, publishing and trend intelligence.</p></div>
+      <div class="titleblock"><h1>Overview</h1><p>Content performance, publishing and live trend research.</p></div>
       <div class="top-actions"><input class="search" id="dashboardSearch" type="search" placeholder="Search posts…"><a class="button" href="/" target="_blank">View site ↗</a><a class="button primary" href="/admin/editor/">＋ New article</a></div>
     </header>
 
@@ -71,7 +71,7 @@ export const prerender = true;
 
     <section class="trend-layout">
       <article class="panel trend-panel">
-        <div class="panel-head"><div><div class="trend-headline"><h2>Trend Intelligence</h2><span class="ai-badge" id="aiBadge">Google Trends</span></div><p id="trendSubtitle">Finding fresh topics related to your niche…</p></div><div class="trend-actions"><button class="mini-button" id="refreshTrends">Refresh</button><button class="mini-button" id="aiIdeas">Generate AI angles</button></div></div>
+        <div class="panel-head"><div><div class="trend-headline"><h2>Trend Intelligence</h2><span class="ai-badge" id="aiBadge">Google Trends</span></div><p id="trendSubtitle">Finding fresh topics related to your niche…</p></div><div class="trend-actions"><button class="mini-button" id="refreshTrends">Refresh</button><button class="mini-button" id="aiIdeas">Refresh ideas</button></div></div>
         <div class="panel-body"><div class="trend-source" id="trendSource"><span class="trend-chip">Loading live trends…</span></div><div class="ideas" id="trendIdeas"><div class="empty">Loading topic opportunities…</div></div></div>
       </article>
       <article class="panel">
@@ -85,7 +85,7 @@ export const prerender = true;
       <article class="panel"><div class="panel-head"><div><h2>Search visibility</h2><p>Google Search Console</p></div><span class="ai-badge">Optional</span></div><div class="panel-body search-console"><div class="search-state"><strong>Search Console is not connected yet</strong><p>When we add Google Search Console API credentials, this card can show real clicks, impressions, CTR and average position. No fake ranking data is displayed.</p></div><div class="search-metrics"><div class="fake-metric"><b>—</b>Clicks</div><div class="fake-metric"><b>—</b>Avg. position</div></div></div></article>
     </section>
 
-    <div class="footer-note">Traffic is stored in D1. Trend ideas are based on Google Trends and your configured niche; AI results are cached to reduce usage.</div>
+    <div class="footer-note">Traffic is stored in D1. Trend ideas are based on Google Trends and your configured niche. Zero-cost mode uses no paid AI inference.</div>
   </main>
 </div>
 <script is:inline>

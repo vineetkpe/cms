@@ -19,7 +19,7 @@ export const prerender = true;
   <form id="form">
     <section class="panel"><h2>Brand & homepage</h2>
       <div class="grid"><div class="field"><label>Site name</label><input id="name" maxlength="80" required></div><div class="field"><label>Logo text</label><input id="logoText" maxlength="80"></div></div>
-      <div class="field"><label>Logo image URL</label><input id="logoUrl" placeholder="/uploads/logo.webp"><div class="hint">Optional. Leave blank to use the letter mark.</div></div>
+      <div class="field"><label>Logo image URL</label><input id="logoUrl" placeholder="/media/logo.webp"><div class="hint">Optional. Leave blank to use the letter mark.</div></div>
       <div class="field"><label>Homepage eyebrow</label><input id="homepageEyebrow" maxlength="80"></div>
       <div class="field"><label>Homepage headline</label><input id="tagline" maxlength="180" required></div>
       <div class="field"><label>Site description</label><textarea id="description" maxlength="320" required></textarea></div>
@@ -38,13 +38,13 @@ export const prerender = true;
 
     <section class="panel"><h2>SEO & integrations</h2>
       <div class="grid"><div class="field"><label>Production URL</label><input id="url" type="url" required></div><div class="field"><label>Language</label><input id="language" maxlength="12" placeholder="en"></div></div>
-      <div class="field"><label>Default social image</label><input id="defaultOgImage" placeholder="/uploads/og.webp"></div>
+      <div class="field"><label>Default social image</label><input id="defaultOgImage" placeholder="/media/og.webp"></div>
       <div class="grid"><div class="field"><label>Google Analytics ID</label><input id="googleAnalyticsId" placeholder="G-XXXXXXXX"></div><div class="field"><label>Search Console verification</label><input id="googleSiteVerification"></div></div>
       <div class="grid"><div class="field"><label>AdSense publisher</label><input id="adsensePublisherId" placeholder="ca-pub-..."></div><div class="field"><label>Article ad slot</label><input id="adsenseArticleSlot"></div></div>
       <div class="field"><label>Sidebar ad slot</label><input id="adsenseSidebarSlot"></div>
     </section>
 
-    <section class="panel"><h2>Trend intelligence</h2><p>Controls the Google Trends feed and AI topic recommendations shown on your dashboard.</p>
+    <section class="panel"><h2>Trend intelligence</h2><p>Controls the Google Trends feed and niche matching shown on your dashboard. Zero-cost mode does not use paid AI inference.</p>
       <div class="trendbox">
         <strong>Content niche</strong>
         <div class="field"><label>Describe the site niche</label><textarea id="contentNiche" maxlength="320" placeholder="Jobs, careers, government jobs, recruitment, exams..."></textarea><div class="hint">Be specific. The CMS uses this to reject unrelated trending topics.</div></div>

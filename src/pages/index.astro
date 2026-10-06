@@ -8,88 +8,60 @@ export const prerender = false;
 
 const site = await getSiteSettings();
 const posts = await getPublishedPosts();
-const featured = posts.find((post) => post.data.featured) || posts[0];
-const remaining = posts.filter((post) => post.id !== featured?.id);
-const secondary = remaining.slice(0, 2);
-const latest = remaining.slice(2, 8);
-const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 8);
-const authorCount = new Set(posts.map((post) => post.data.author)).size;
-const topicCards = categoryNames.slice(0, 4).map((name) => ({
+const builtIns = ['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
+const categories = builtIns.map((name) => ({
   name,
   count: posts.filter((post) => post.data.category === name).length,
+  latest: posts.find((post) => post.data.category === name),
 }));
+const featured = posts.find((post) => post.data.featured) || posts[0];
+const latest = posts.slice(0, 10);
+const secondary = posts.filter((post) => post.id !== featured?.id).slice(0, 3);
 ---
 <BaseLayout title={site.name} description={site.description} siteSettings={site}>
-  <section class="front-intro">
-    <div class="container front-intro-grid">
-      <div class="front-intro-copy">
-        <div class="kicker">{site.homepageEyebrow || site.name}</div>
+  <section class="news-hero">
+    <div class="container news-hero-grid">
+      <div>
+        <div class="kicker">{site.homepageEyebrow || 'Latest verified updates'}</div>
         <h1>{site.tagline}</h1>
         <p>{site.description}</p>
+        <div class="hero-actions"><a class="primary-link" href="/articles/">Browse all updates</a><a class="secondary-link" href="/search/">Search the site</a></div>
       </div>
-      <div class="front-facts" aria-label="Publication summary">
-        <div class="front-fact"><strong>{posts.length}</strong><span>published stories</span></div>
-        <div class="front-fact"><strong>{categoryNames.length}</strong><span>active topics</span></div>
-        <div class="front-fact"><strong>{authorCount}</strong><span>contributor{authorCount === 1 ? '' : 's'}</span></div>
-      </div>
+      <aside class="hero-status" aria-label="Publication status">
+        <strong>Latest coverage</strong>
+        <div><span>Published updates</span><b>{posts.length}</b></div>
+        <div><span>Update categories</span><b>{builtIns.length}</b></div>
+        <div><span>Last refreshed</span><b>{posts[0] ? posts[0].data.pubDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}</b></div>
+      </aside>
     </div>
   </section>
 
-  {categoryNames.length > 0 && (
-    <nav class="topic-strip" aria-label="Browse article categories">
-      <div class="container topic-strip-inner">
-        <a class="topic-link is-active" href="/">Latest</a>
-        {categoryNames.map((name) => <a class="topic-link" href={`/category/${slugify(name)}/`}>{name}</a>)}
-      </div>
-    </nav>
-  )}
-
-  <section class="section section-first" aria-labelledby="featured-heading">
+  <section class="quick-categories" aria-labelledby="quick-categories-title">
     <div class="container">
-      <div class="section-label-row">
-        <h2 id="featured-heading">Featured</h2>
-        <span>Start with our latest recommended read</span>
+      <div class="section-head compact-head"><div><div class="kicker">Browse quickly</div><h2 id="quick-categories-title">What are you looking for?</h2></div><a href="/categories/">All categories →</a></div>
+      <div class="category-action-grid">
+        {categories.map((item) => <a class="category-action" href={`/category/${slugify(item.name)}/`}><span>{item.name}</span><strong>{item.count}</strong><small>{item.count ? 'View latest updates' : 'No update published yet'}</small></a>)}
       </div>
-      {featured ? (
-        <div class="lead-grid">
-          <PostCard post={featured} featured={true} />
-          {secondary.length > 0 && (
-            <div class="lead-side">
-              {secondary.map((post) => <PostCard post={post} compact={true} />)}
-            </div>
-          )}
-        </div>
-      ) : <div class="empty">Publish your first article from the admin dashboard.</div>}
     </div>
   </section>
 
-  {latest.length > 0 && (
-    <section class="section" aria-labelledby="latest-heading">
-      <div class="container">
-        <div class="section-head">
-          <div><div class="kicker">Fresh from the desk</div><h2 id="latest-heading">Latest stories</h2></div>
-          <a href="/articles/">View all articles →</a>
-        </div>
-        <div class="latest-grid">{latest.map((post) => <PostCard post={post} />)}</div>
-      </div>
-    </section>
-  )}
+  {featured && <section class="section featured-section">
+    <div class="container">
+      <div class="section-label-row"><h2>Featured update</h2><span>Important reading selected from the latest coverage</span></div>
+      <div class="lead-grid"><PostCard post={featured} featured={true} /><div class="lead-side">{secondary.map((post) => <PostCard post={post} compact={true} />)}</div></div>
+    </div>
+  </section>}
 
-  {topicCards.length > 0 && (
-    <section class="section" aria-labelledby="topics-heading">
-      <div class="container">
-        <div class="section-head">
-          <div><div class="kicker">Browse</div><h2 id="topics-heading">Explore by topic</h2></div>
-        </div>
-        <div class="topic-grid">
-          {topicCards.map((item) => (
-            <a class="topic-card" href={`/category/${slugify(item.name)}/`}>
-              <strong>{item.name}</strong>
-              <span>{item.count} article{item.count === 1 ? '' : 's'} →</span>
-            </a>
-          ))}
-        </div>
+  <section class="section updates-section" aria-labelledby="latest-updates-title">
+    <div class="container updates-layout">
+      <div>
+        <div class="section-head"><div><div class="kicker">Newest first</div><h2 id="latest-updates-title">Latest updates</h2></div><a href="/articles/">View archive →</a></div>
+        {latest.length ? <div class="update-feed">{latest.map((post) => <PostCard post={post} compact={true} />)}</div> : <div class="empty">No published updates yet.</div>}
       </div>
-    </section>
-  )}
+      <aside class="reader-panel">
+        <div class="reader-panel-block"><strong>Useful links</strong><a href="/search/">Search updates <span>→</span></a><a href="/categories/">Browse categories <span>→</span></a><a href="/editorial-policy/">Editorial standards <span>→</span></a><a href="/corrections-policy/">Corrections policy <span>→</span></a></div>
+        <div class="reader-note"><strong>Before you apply</strong><p>Always confirm deadlines, eligibility, fees and official links on the issuing authority’s website.</p></div>
+      </aside>
+    </div>
+  </section>
 </BaseLayout>

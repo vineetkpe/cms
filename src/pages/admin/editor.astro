@@ -55,7 +55,7 @@ export const prerender = true;
         </div>
 
         <div class="card stack" id="revisionsCard" hidden>
-          <div><strong class="label">Revision history</strong><div class="hint">Every published update is versioned in Git. Restoring creates a new commit, so history is never destroyed.</div></div>
+          <div><strong class="label">Revision history</strong><div class="hint">Previous article versions are stored in D1. Restoring keeps the current version as a revision.</div></div>
           <div id="revisionList"></div>
         </div>
       </section>
@@ -91,7 +91,7 @@ export const prerender = true;
           <strong class="label">Featured image</strong>
           <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
           <button class="btn" type="button" id="uploadImage">Optimize & upload</button>
-          <div class="field"><label for="featuredImage">Image URL</label><input id="featuredImage" placeholder="/uploads/..." /></div>
+          <div class="field"><label for="featuredImage">Image URL</label><input id="featuredImage" placeholder="/media/..." /></div>
           <div class="field"><label for="featuredImageAlt">Alt text</label><input id="featuredImageAlt" maxlength="180" /></div>
           <img id="mediaPreview" class="media-preview" hidden alt="" />
         </div>

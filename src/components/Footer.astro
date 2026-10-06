@@ -7,44 +7,16 @@ const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(h
   <div class="container footer-grid">
     <div class="footer-about">
       <a class="brand footer-brand" href="/" aria-label={`${site.name} home`}>
-        {site.logoUrl ? <img class="footer-logo" src={site.logoUrl} alt="" width="36" height="36" decoding="async" /> : <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>}
+        {site.logoUrl ? <img class="footer-logo" src={site.logoUrl} alt="" width="36" height="36" decoding="async" /> : <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0,1).toUpperCase()}</span>}
         <span>{site.logoText || site.name}</span>
       </a>
       <p>{site.footerText || site.description}</p>
-      {socials.length > 0 && (
-        <div class="social-links" aria-label="Social links">
-          {socials.map(([name, href]) => <a href={href} rel="me noopener noreferrer" target="_blank">{name === 'x' ? 'X' : name[0].toUpperCase() + name.slice(1)}</a>)}
-        </div>
-      )}
+      {socials.length > 0 && <div class="social-links" aria-label="Social links">{socials.map(([name,href]) => <a href={href} rel="me noopener noreferrer" target="_blank">{name === 'x' ? 'X' : name[0].toUpperCase()+name.slice(1)}</a>)}</div>}
     </div>
-
-    <div class="footer-links">
-      <strong>Explore</strong>
-      <a href="/articles/">All articles</a>
-      <a href="/categories/">Categories</a>
-      <a href="/tags/">Tags</a>
-      <a href="/authors/">Authors</a>
-      <a href="/search/">Search</a>
-    </div>
-
-    <div class="footer-links">
-      <strong>Publication</strong>
-      <a href="/about/">About</a>
-      <a href="/editorial-policy/">Editorial policy</a>
-      <a href="/contact/">Contact</a>
-      <a href="/rss.xml">RSS feed</a>
-    </div>
-
-    <div class="footer-links">
-      <strong>Legal</strong>
-      <a href="/privacy/">Privacy</a>
-      <a href="/terms/">Terms</a>
-      <a href="/disclaimer/">Disclaimer</a>
-    </div>
+    <div class="footer-links"><strong>Updates</strong><a href="/category/job-updates/">Job Updates</a><a href="/category/exam-updates/">Exam Updates</a><a href="/category/result-updates/">Result Updates</a><a href="/category/scholarship/">Scholarship</a><a href="/category/scheme/">Scheme</a></div>
+    <div class="footer-links"><strong>Publication</strong><a href="/articles/">All updates</a><a href="/about/">About</a><a href="/contact/">Contact</a><a href="/editorial-policy/">Editorial Policy</a><a href="/corrections-policy/">Corrections Policy</a></div>
+    <div class="footer-links"><strong>Legal & disclosure</strong><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms of Use</a><a href="/disclaimer/">Disclaimer</a><a href="/advertising-policy/">Advertising & Disclosure</a><a href="/rss.xml">RSS feed</a></div>
   </div>
-  <div class="container footer-bottom">
-    <span>© {year} {site.name}. All rights reserved.</span>
-    <span>Independent publishing, built for readers.</span>
-  </div>
-  <style>.footer-logo{width:36px;height:36px;object-fit:contain;border-radius:8px}</style>
+  <div class="container footer-bottom"><span>© {year} {site.name}. All rights reserved.</span><span>Verify important dates and eligibility with the official source linked in each update.</span></div>
+  <style>.footer-logo{width:36px;height:36px;object-fit:contain;border-radius:9px}</style>
 </footer>

@@ -1,69 +1,53 @@
 ---
 const { site } = Astro.props;
-
 const currentPath = Astro.url.pathname;
-const navItems = [
-  ...site.navigation,
-  { label: 'Articles', href: '/articles/' }
-].filter((item, index, items) => items.findIndex((candidate) => candidate.href === item.href) === index);
-
-const isActive = (href: string) => href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+const primary = [
+  { label: 'Home', href: '/' },
+  { label: 'All updates', href: '/articles/' },
+  { label: 'About', href: '/about/' },
+  { label: 'Contact', href: '/contact/' },
+];
+const categories = [
+  { label: 'Job Updates', href: '/category/job-updates/' },
+  { label: 'Exam Updates', href: '/category/exam-updates/' },
+  { label: 'Result Updates', href: '/category/result-updates/' },
+  { label: 'Scholarship', href: '/category/scholarship/' },
+  { label: 'Scheme', href: '/category/scheme/' },
+];
+const isActive = (href) => href === '/' ? currentPath === '/' : currentPath.startsWith(href);
 ---
 <header class="site-header">
   <div class="container header-inner">
     <a class="brand" href="/" aria-label={`${site.name} home`}>
-      {site.logoUrl ? <img class="brand-logo" src={site.logoUrl} alt="" width="36" height="36" decoding="async" /> : <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0, 1).toUpperCase()}</span>}
+      {site.logoUrl ? <img class="brand-logo" src={site.logoUrl} alt="" width="36" height="36" decoding="async" /> : <span class="brand-mark" aria-hidden="true">{(site.logoText || site.name).slice(0,1).toUpperCase()}</span>}
       <span class="brand-name">{site.logoText || site.name}</span>
     </a>
-
     <nav class="desktop-nav" aria-label="Primary navigation">
-      {navItems.map((item) => (
-        <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>
-      ))}
+      {primary.map((item) => <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>)}
     </nav>
-
     <div class="header-actions">
-      <a class="header-search" href="/search/">Search</a>
-      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open navigation menu">
-        <span aria-hidden="true">Menu</span>
-      </button>
+      <a class="header-search" href="/search/" aria-label="Search publication">Search</a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open navigation menu">Menu</button>
     </div>
   </div>
-
+  <nav class="category-nav" aria-label="Update categories">
+    <div class="container category-nav-inner">
+      {categories.map((item) => <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>)}
+    </div>
+  </nav>
   <nav id="mobile-nav" class="mobile-nav" aria-label="Mobile navigation" hidden>
     <div class="container mobile-nav-inner">
-      {navItems.map((item) => (
-        <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>
-      ))}
+      {[...primary, ...categories].map((item) => <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>)}
       <a href="/search/">Search</a>
     </div>
   </nav>
 </header>
 <script is:inline>
-  const button = document.querySelector('.menu-button');
-  const nav = document.querySelector('#mobile-nav');
-
-  const closeMenu = () => {
-    if (!(nav instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return;
-    nav.hidden = true;
-    button.setAttribute('aria-expanded', 'false');
-    button.setAttribute('aria-label', 'Open navigation menu');
-  };
-
-  button?.addEventListener('click', () => {
-    if (!(nav instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return;
-    const willOpen = nav.hidden;
-    nav.hidden = !willOpen;
-    button.setAttribute('aria-expanded', String(willOpen));
-    button.setAttribute('aria-label', willOpen ? 'Close navigation menu' : 'Open navigation menu');
-  });
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 760) closeMenu();
-  }, { passive: true });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeMenu();
-  });
+  const button=document.querySelector('.menu-button');
+  const nav=document.querySelector('#mobile-nav');
+  const close=()=>{if(!(nav instanceof HTMLElement)||!(button instanceof HTMLButtonElement))return;nav.hidden=true;button.setAttribute('aria-expanded','false')};
+  button?.addEventListener('click',()=>{if(!(nav instanceof HTMLElement)||!(button instanceof HTMLButtonElement))return;const open=nav.hidden;nav.hidden=!open;button.setAttribute('aria-expanded',String(open))});
+  window.addEventListener('resize',()=>{if(innerWidth>820)close()},{passive:true});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 </script>
-<style>.brand-logo{width:36px;height:36px;object-fit:contain;border-radius:8px}</style>
+<style>.brand-logo{width:36px;height:36px;object-fit:contain;border-radius:9px}</style>
