@@ -17,13 +17,29 @@ if (!post) return Astro.redirect('/404/');
 let Content: any = null;
 let articleHtml = '';
 let headings: Array<{ depth: number; slug: string; text: string }> = [];
-if (post.__d1) {
-  articleHtml = await marked.parse(String(post.body || ''));
-  headings = String(post.body || '').split('\n').flatMap((line) => {
+
+function markdownHeadings(markdown: string) {
+  const seen = new Map<string, number>();
+  return markdown.split('\n').flatMap((line) => {
     const match = line.match(/^(#{2,3})\s+(.+?)\s*#*\s*$/);
     if (!match) return [];
     const text = match[2].replace(/[*_`~\[\]]/g, '').trim();
-    return [{ depth: match[1].length, slug: slugify(text), text }];
+    const base = slugify(text) || 'section';
+    const count = seen.get(base) || 0;
+    seen.set(base, count + 1);
+    return [{ depth: match[1].length, slug: count ? `${base}-${count + 1}` : base, text }];
+  });
+}
+
+if (post.__d1) {
+  const markdown = String(post.body || '');
+  headings = markdownHeadings(markdown);
+  const rawHtml = String(await marked.parse(markdown));
+  let headingIndex = 0;
+  articleHtml = rawHtml.replace(/<h([23])>([\s\S]*?)<\/h\1>/g, (match, depth, inner) => {
+    const heading = headings[headingIndex++];
+    if (!heading) return match;
+    return `<h${depth} id="${heading.slug}">${inner}</h${depth}>`;
   });
 } else {
   const rendered = await render(post);
@@ -41,6 +57,7 @@ const readTime = Math.max(1, Math.ceil(wordCount / 220));
 const showInlineAd = !post.data.hideAds && wordCount >= 500;
 const showRailAd = !post.data.hideAds && wordCount >= 900;
 const publishedAt = post.data.publishAt || post.data.pubDate;
+const authorInitial = String(post.data.author || 'A').slice(0, 1).toUpperCase();
 
 const articleSchema = {
   '@context': 'https://schema.org',
@@ -98,6 +115,8 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
   tags={post.data.tags}
   siteSettings={site}
 >
+  <div class="reading-progress" aria-hidden="true"><span id="reading-progress-bar"></span></div>
+
   <div class="container article-shell">
     <article class="article-main">
       <header class="article-header">
@@ -115,12 +134,27 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
           <span>{readTime} min read</span>
           {post.data.updatedDate && <><span aria-hidden="true">·</span><span>Updated {post.data.updatedDate.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</span></>}
         </div>
+
+        <div class="article-actions" aria-label="Article actions">
+          <button class="article-action" type="button" data-share>Share</button>
+          <button class="article-action" type="button" data-copy>Copy link</button>
+          <span class="article-action-status" data-action-status aria-live="polite"></span>
+        </div>
       </header>
 
       {post.data.featuredImage && (
         <figure class="hero-image">
           <img src={post.data.featuredImage} alt={post.data.featuredImageAlt || post.data.title} width="1200" height="675" fetchpriority="high" decoding="async" />
         </figure>
+      )}
+
+      {headings.length > 0 && (
+        <details class="toc-mobile">
+          <summary>On this page</summary>
+          <nav aria-label="Mobile table of contents">
+            {headings.filter((h) => h.depth <= 3).map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
+          </nav>
+        </details>
       )}
 
       {post.__d1 ? <div class="article-content" set:html={articleHtml} /> : <div class="article-content"><Content /></div>}
@@ -135,9 +169,19 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
         </section>
       )}
 
+      <aside class="author-box" aria-label="About the author">
+        <span class="author-box-avatar" aria-hidden="true">{authorInitial}</span>
+        <div class="author-box-copy">
+          <div class="kicker">Contributor</div>
+          <strong>{post.data.author}</strong>
+          <p>Explore more practical guides and updates from this contributor.</p>
+        </div>
+        <a href={`/author/${authorSlug}/`}>More articles →</a>
+      </aside>
+
       <aside class="article-endnote" aria-label="Editorial information">
         <strong>About this article</strong>
-        <p>Published by {post.data.author}. This page is part of the {post.data.category} section and may be updated when better information becomes available.</p>
+        <p>Published in {post.data.category}. We may update this page when clearer or more useful information becomes available.</p>
       </aside>
 
       {post.data.tags.length > 0 && (
@@ -148,15 +192,17 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
 
       {related.length > 0 && (
         <section class="related-posts" aria-labelledby="related-title">
-          <div class="section-head"><div><div class="kicker">Keep reading</div><h2 id="related-title">Related articles</h2></div></div>
-          <div class="post-grid">{related.map((item) => <PostCard post={item} />)}</div>
+          <div class="section-head">
+            <div><div class="kicker">Keep reading</div><h2 id="related-title">Related stories</h2></div>
+          </div>
+          <div class="related-grid">{related.map((item) => <PostCard post={item} compact={true} />)}</div>
         </section>
       )}
     </article>
 
     <aside class="article-rail" aria-label="Article tools">
       {headings.length > 0 && (
-        <nav class="toc" aria-label="Table of contents">
+        <nav class="toc toc-rail" aria-label="Table of contents">
           <strong>On this page</strong>
           {headings.filter((h) => h.depth <= 3).map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
         </nav>
@@ -164,7 +210,58 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
       {showRailAd && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" publisherId={site.adsensePublisherId} />}
     </aside>
   </div>
-  <script is:inline define:vars={{ slug }}>
+
+  <script is:inline define:vars={{ slug, shareUrl: canonical, shareTitle: post.data.title }}>
+    const status = document.querySelector('[data-action-status]');
+    const setStatus = (message) => {
+      if (!(status instanceof HTMLElement)) return;
+      status.textContent = message;
+      window.setTimeout(() => { status.textContent = ''; }, 2200);
+    };
+
+    const copyLink = async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch {
+        const input = document.createElement('textarea');
+        input.value = shareUrl;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+      setStatus('Link copied');
+    };
+
+    document.querySelector('[data-copy]')?.addEventListener('click', copyLink);
+    document.querySelector('[data-share]')?.addEventListener('click', async () => {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: shareTitle, url: shareUrl });
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+        }
+      }
+      await copyLink();
+    });
+
+    const article = document.querySelector('.article-main');
+    const progress = document.querySelector('#reading-progress-bar');
+    const updateProgress = () => {
+      if (!(article instanceof HTMLElement) || !(progress instanceof HTMLElement)) return;
+      const start = article.getBoundingClientRect().top + window.scrollY;
+      const distance = Math.max(1, article.offsetHeight - window.innerHeight);
+      const value = Math.min(1, Math.max(0, (window.scrollY - start) / distance));
+      progress.style.transform = `scaleX(${value})`;
+    };
+    updateProgress();
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener('resize', updateProgress, { passive: true });
+
     try {
       const key = `cms-view:${slug}:${new Date().toISOString().slice(0,10)}`;
       if (!sessionStorage.getItem(key)) {
