@@ -21,3 +21,13 @@
 
 /api/comments
   X-Robots-Tag: noindex, nofollow
+
+
+/brand/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/admin-suite.css
+  Cache-Control: public, max-age=3600
+
+/admin-suite.js
+  Cache-Control: public, max-age=3600

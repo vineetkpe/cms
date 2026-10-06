@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { getPublishedPosts, slugify } from '../lib/posts';
+import { getPublishedPostCards, slugify } from '../lib/posts';
 import { getSiteSettings } from '../lib/site-settings';
 import { getManagedPages } from '../lib/managed-pages';
 
@@ -28,7 +28,7 @@ export const GET: APIRoute = async () => {
     const cached = await kv.get(CACHE_KEY).catch(() => null);
     if (cached) return new Response(cached, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-CMS-Cache': 'HIT' } });
   }
-  const [site, posts, pages] = await Promise.all([getSiteSettings(), getPublishedPosts(), getManagedPages()]);
+  const [site, posts, pages] = await Promise.all([getSiteSettings(), getPublishedPostCards(), getManagedPages()]);
   const staticPaths = [
     ...baseStaticPaths,
     ...managedPaths.filter(([key]) => !(pages as any)[key]?.noindex).map(([, path]) => path),

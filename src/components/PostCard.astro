@@ -5,7 +5,7 @@ const href = `/${post.id.replace(/\.md$/, '')}/`;
 const categoryHref = `/category/${slugify(post.data.category)}/`;
 const authorHref = `/author/${slugify(post.data.author)}/`;
 const wordCount = String(post.body || '').trim().split(/\s+/).filter(Boolean).length;
-const readTime = Math.max(1, Math.ceil(wordCount / 220));
+const readTime = Number(post.__readTime || 0) || Math.max(1, Math.ceil(wordCount / 220));
 const hasImage = Boolean(post.data.featuredImage);
 ---
 <article class:list={['post-card', { featured, compact, 'has-image': hasImage, 'text-only': !hasImage }]}>

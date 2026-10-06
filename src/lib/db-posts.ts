@@ -134,6 +134,17 @@ function parseRow(row: PostRow): AdminPost {
   return { ...post, slug: row.slug, draft: row.status === 'draft', sha: undefined };
 }
 
+function cardPayload(post: AdminPost, status: CmsPostStatus) {
+  const words = String(post.body || '').trim().split(/\s+/).filter(Boolean).length;
+  return JSON.stringify({
+    ...post,
+    body: '',
+    _readTime: Math.max(1, Math.ceil(words / 220)),
+    draft: status === 'draft',
+    sha: undefined,
+  });
+}
+
 function safeLimit(value: number, fallback = 18, max = 100) {
   const n = Number.isFinite(value) ? Math.round(value) : fallback;
   return Math.max(1, Math.min(max, n));
@@ -167,7 +178,7 @@ export async function getDbPost(slug: string): Promise<AdminPost | null> {
 
 export async function listPublishedDbPosts(limit = 18, offset = 0): Promise<AdminPost[]> {
   const result = await db()
-    .prepare(`SELECT slug, payload_json, status
+    .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
       FROM cms_posts
       WHERE status = 'published'
       ORDER BY sort_at DESC, updated_at DESC
@@ -180,9 +191,19 @@ export async function listPublishedDbPosts(limit = 18, offset = 0): Promise<Admi
 export async function countPublishedDbPosts(): Promise<number> {
   return (await taxonomySnapshot()).total;
 }
+
+export async function listPublishedDbCardsAll(): Promise<AdminPost[]> {
+  const result = await db()
+    .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
+      FROM cms_posts
+      WHERE status = 'published'
+      ORDER BY sort_at DESC, updated_at DESC`)
+    .all<PostRow>();
+  return (result.results || []).map(parseRow);
+}
 export async function getFeaturedDbPost(): Promise<AdminPost | null> {
   const row = await db()
-    .prepare(`SELECT slug, payload_json, status
+    .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
       FROM cms_posts
       WHERE status = 'published' AND featured = 1
       ORDER BY sort_at DESC, updated_at DESC
@@ -193,7 +214,7 @@ export async function getFeaturedDbPost(): Promise<AdminPost | null> {
 
 export async function listPublishedDbPostsByCategory(categorySlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
   const result = await db()
-    .prepare(`SELECT slug, payload_json, status
+    .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
       FROM cms_posts
       WHERE status = 'published' AND category_slug = ?
       ORDER BY sort_at DESC, updated_at DESC
@@ -208,7 +229,7 @@ export async function countPublishedDbPostsByCategory(categorySlug: string): Pro
 }
 export async function listPublishedDbPostsByAuthor(authorSlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
   const result = await db()
-    .prepare(`SELECT slug, payload_json, status
+    .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
       FROM cms_posts
       WHERE status = 'published' AND author_slug = ?
       ORDER BY sort_at DESC, updated_at DESC
@@ -223,7 +244,7 @@ export async function countPublishedDbPostsByAuthor(authorSlug: string): Promise
 }
 export async function listPublishedDbPostsByTag(tagSlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
   const result = await db()
-    .prepare(`SELECT p.slug, p.payload_json, p.status
+    .prepare(`SELECT p.slug, COALESCE(p.card_json, p.payload_json) AS payload_json, p.status
       FROM cms_post_tags t INDEXED BY idx_cms_post_tags_tag
       JOIN cms_posts p ON p.slug = t.post_slug
       WHERE t.tag_slug = ? AND p.status = 'published'
@@ -253,7 +274,7 @@ export async function getRelatedDbPosts(post: AdminPost, limit = 3): Promise<Adm
 
   if (post.category) {
     const categoryRows = await db()
-      .prepare(`SELECT slug, payload_json, status
+      .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
         FROM cms_posts
         WHERE status = 'published' AND category_slug = ? AND slug <> ?
         ORDER BY sort_at DESC, updated_at DESC
@@ -267,7 +288,7 @@ export async function getRelatedDbPosts(post: AdminPost, limit = 3): Promise<Adm
   if (seen.size < wanted && tagSlugs.length) {
     const placeholders = tagSlugs.map(() => '?').join(',');
     const tagRows = await db()
-      .prepare(`SELECT DISTINCT p.slug, p.payload_json, p.status
+      .prepare(`SELECT DISTINCT p.slug, COALESCE(p.card_json, p.payload_json) AS payload_json, p.status
         FROM cms_post_tags t INDEXED BY idx_cms_post_tags_tag
         JOIN cms_posts p ON p.slug = t.post_slug
         WHERE p.status = 'published' AND p.slug <> ? AND t.tag_slug IN (${placeholders})
@@ -280,7 +301,7 @@ export async function getRelatedDbPosts(post: AdminPost, limit = 3): Promise<Adm
 
   if (seen.size < wanted) {
     const latest = await db()
-      .prepare(`SELECT slug, payload_json, status
+      .prepare(`SELECT slug, COALESCE(card_json, payload_json) AS payload_json, status
         FROM cms_posts
         WHERE status = 'published' AND slug <> ?
         ORDER BY sort_at DESC, updated_at DESC
@@ -297,6 +318,7 @@ export async function saveDbPost(post: AdminPost) {
   const status = getPostStatus(post);
   const now = Math.floor(Date.now() / 1000);
   const payload = JSON.stringify({ ...post, draft: status === 'draft', sha: undefined });
+  const card = cardPayload(post, status);
   const category = String(post.category || '').trim();
   const categorySlug = indexSlug(category);
   const authorSlug = indexSlug(post.author || '');
@@ -304,8 +326,8 @@ export async function saveDbPost(post: AdminPost) {
   const publishedSort = sortAt(post);
 
   await db().prepare(`INSERT INTO cms_posts
-    (slug, title, author, status, pub_date, publish_at, payload_json, created_at, updated_at, category, category_slug, author_slug, featured, sort_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (slug, title, author, status, pub_date, publish_at, payload_json, card_json, created_at, updated_at, category, category_slug, author_slug, featured, sort_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(slug) DO UPDATE SET
       title = excluded.title,
       author = excluded.author,
@@ -313,13 +335,14 @@ export async function saveDbPost(post: AdminPost) {
       pub_date = excluded.pub_date,
       publish_at = excluded.publish_at,
       payload_json = excluded.payload_json,
+      card_json = excluded.card_json,
       updated_at = excluded.updated_at,
       category = excluded.category,
       category_slug = excluded.category_slug,
       author_slug = excluded.author_slug,
       featured = excluded.featured,
       sort_at = excluded.sort_at`)
-    .bind(post.slug, post.title, post.author, status, post.pubDate, post.publishAt || null, payload, now, now, category, categorySlug, authorSlug, featured, publishedSort)
+    .bind(post.slug, post.title, post.author, status, post.pubDate, post.publishAt || null, payload, card, now, now, category, categorySlug, authorSlug, featured, publishedSort)
     .run();
 
   await db().prepare('DELETE FROM cms_post_tags WHERE post_slug = ?').bind(post.slug).run();

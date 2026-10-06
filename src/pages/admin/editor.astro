@@ -1,5 +1,4 @@
 ---
-import '@toast-ui/editor/dist/toastui-editor.css';
 export const prerender = true;
 ---
 <!doctype html>
@@ -123,39 +122,51 @@ export const prerender = true;
 </div>
 
 <script>
-  import Editor from '@toast-ui/editor';
+  async function loadCmsEditor() {
+    if ((window as any).cmsEditor) return;
+    const root = document.querySelector('#editor');
+    if (!(root instanceof HTMLElement)) return;
 
-  const root = document.querySelector('#editor');
-  if (root instanceof HTMLElement) {
-    const editor = new Editor({
-      el: root,
-      height: '620px',
-      initialEditType: 'wysiwyg',
-      previewStyle: 'vertical',
-      usageStatistics: false,
-      hideModeSwitch: false,
-      toolbarItems: [
-        ['heading', 'bold', 'italic', 'strike'],
-        ['hr', 'quote'],
-        ['ul', 'ol', 'task', 'indent', 'outdent'],
-        ['table', 'image', 'link'],
-        ['code', 'codeblock'],
-      ],
-      hooks: {
-        addImageBlobHook: async (blob, callback) => {
-          try {
-            const file = blob instanceof File ? blob : new File([blob], `image-${Date.now()}.png`, { type: blob.type || 'image/png' });
-            const uploaded = await (window as any).cmsUploadImage(file);
-            callback(uploaded.url, uploaded.alt || '');
-          } catch (error) {
-            (window as any).cmsNotice(error instanceof Error ? error.message : 'Image upload failed.', false);
-          }
+    try {
+      const [{ default: Editor }] = await Promise.all([
+        import('@toast-ui/editor'),
+        import('@toast-ui/editor/dist/toastui-editor.css'),
+      ]);
+
+      const editor = new Editor({
+        el: root,
+        height: '620px',
+        initialEditType: 'wysiwyg',
+        previewStyle: 'vertical',
+        usageStatistics: false,
+        hideModeSwitch: false,
+        toolbarItems: [
+          ['heading', 'bold', 'italic', 'strike'],
+          ['hr', 'quote'],
+          ['ul', 'ol', 'task', 'indent', 'outdent'],
+          ['table', 'image', 'link'],
+          ['code', 'codeblock'],
+        ],
+        hooks: {
+          addImageBlobHook: async (blob, callback) => {
+            try {
+              const file = blob instanceof File ? blob : new File([blob], `image-${Date.now()}.png`, { type: blob.type || 'image/png' });
+              const uploaded = await (window as any).cmsUploadImage(file);
+              callback(uploaded.url, uploaded.alt || '');
+            } catch (error) {
+              (window as any).cmsNotice(error instanceof Error ? error.message : 'Image upload failed.', false);
+            }
+          },
         },
-      },
-    });
-    (window as any).cmsEditor = editor;
-    window.dispatchEvent(new CustomEvent('cms-editor-ready'));
+      });
+      (window as any).cmsEditor = editor;
+      window.dispatchEvent(new CustomEvent('cms-editor-ready'));
+    } catch (error) {
+      (window as any).cmsNotice?.(error instanceof Error ? error.message : 'Editor failed to load.', false);
+    }
   }
+
+  window.addEventListener('cms-editor-load', loadCmsEditor, { once: true });
 </script>
 
 <script is:inline>
@@ -169,7 +180,7 @@ export const prerender = true;
   function notice(text,ok=true){ const el=$('notice'); el.textContent=text; el.className=`notice show ${ok?'ok':'err'}`; clearTimeout(el._timer); el._timer=setTimeout(()=>el.classList.remove('show'),5000); }
   window.cmsNotice=notice;
 
-  async function optimizeImage(file){ if(file.size>12*1024*1024)throw new Error('Image must be under 12 MB.'); const bitmap=await createImageBitmap(file),max=1800,scale=Math.min(1,max/bitmap.width),canvas=document.createElement('canvas'); canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale); canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height); return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Image conversion failed.')),'image/webp',.84)); }
+  async function optimizeImage(file){ if(file.size>12*1024*1024)throw new Error('Image must be under 12 MB.'); const bitmap=await createImageBitmap(file),max=1400,scale=Math.min(1,max/bitmap.width),canvas=document.createElement('canvas'); canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale); canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height); return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Image conversion failed.')),'image/webp',.8)); }
   async function uploadImage(file){ const blob=await optimizeImage(file),base64=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(blob)}),name=`${slugify($('slug').value||$('title').value)||'image'}-${Date.now()}.webp`; const data=await api('/api/admin/media',{method:'POST',body:JSON.stringify({name,type:'image/webp',base64})}); return {url:data.url,alt:$('featuredImageAlt').value||''}; }
   window.cmsUploadImage=uploadImage;
 
@@ -237,7 +248,7 @@ export const prerender = true;
   async function loadPosts(){const data=await api('/api/admin/posts');posts=data.posts||[];renderPicker();return data;}
   async function loadTemplates(){try{const data=await api('/api/admin/templates');templates=data.templates||[];const select=$('template');select.innerHTML='<option value="">Blank article</option>';templates.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;select.append(o)})}catch(error){notice(error.message,false)} }
 
-  async function boot(){try{const auth=await api('/api/admin/login');if(!auth.authenticated)throw new Error('Not signed in.');$('app').hidden=false;await Promise.all([loadPosts(),loadTemplates()]);const slug=new URL(location.href).searchParams.get('slug');const post=slug?posts.find(p=>p.slug===slug):null;if(post)loadPost(post);else clearForm();}catch{location.replace('/admin/login/')}}
+  async function boot(){try{const auth=await api('/api/admin/login');if(!auth.authenticated)throw new Error('Not signed in.');$('app').hidden=false;window.dispatchEvent(new CustomEvent('cms-editor-load'));await Promise.all([loadPosts(),loadTemplates()]);const slug=new URL(location.href).searchParams.get('slug');const post=slug?posts.find(p=>p.slug===slug):null;if(post)loadPost(post);else clearForm();}catch{location.replace('/admin/login/')}}
   window.addEventListener('beforeunload',(event)=>{if(dirty){event.preventDefault();event.returnValue=''}});
   boot();
 </script>

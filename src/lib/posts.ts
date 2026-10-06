@@ -8,6 +8,7 @@ import {
   getFeaturedDbPost,
   getRelatedDbPosts,
   listDbPosts,
+  listPublishedDbCardsAll,
   listPublishedDbAuthors,
   listPublishedDbCategories,
   listPublishedDbPosts,
@@ -65,7 +66,8 @@ function dbToEntry(post: AdminPost): any {
       hideAds: post.hideAds,
       faq: post.faq || []
     },
-    __d1: true
+    __d1: true,
+    __readTime: Number((post as any)._readTime || 0) || undefined
   };
 }
 
@@ -99,6 +101,14 @@ export async function getPublishedPosts(): Promise<any[]> {
   return Array.from(merged.values())
     .filter((post) => isPublished(post, now))
     .sort((a, b) => publishTime(b) - publishTime(a));
+}
+
+export async function getPublishedPostCards(): Promise<any[]> {
+  try {
+    return (await listPublishedDbCardsAll()).map(dbToEntry);
+  } catch {
+    return await staticPublishedPosts();
+  }
 }
 
 export async function getPublishedPostPage(limit = 18, offset = 0): Promise<{ posts: any[]; total: number }> {

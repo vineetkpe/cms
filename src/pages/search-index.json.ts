@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { getPublishedPosts } from '../lib/posts';
+import { getPublishedPostCards } from '../lib/posts';
 
 export const prerender = false;
 
@@ -26,7 +26,7 @@ export const GET: APIRoute = async () => {
     }
   }
 
-  const posts = await getPublishedPosts();
+  const posts = await getPublishedPostCards();
   const body = JSON.stringify(posts.map((post) => ({
     title: post.data.title,
     description: post.data.description,

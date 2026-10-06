@@ -9,17 +9,24 @@ type D1Statement = {
   first<T = Record<string, unknown>>(): Promise<T | null>;
 };
 
-type D1Binding = {
-  prepare(query: string): D1Statement;
+type D1Binding = { prepare(query: string): D1Statement };
+type KVBinding = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 };
 
-type SettingsRow = {
-  value_json: string;
-  updated_at: number;
-};
+type SettingsRow = { value_json: string; updated_at: number };
+
+const CACHE_KEY = 'cms:public:site-settings:v1';
+const MEMORY_TTL_MS = 60_000;
+let memoryCache: { value: SiteSettings; expiresAt: number } | null = null;
 
 function database(): D1Binding | null {
   return ((env as any).DB as D1Binding | undefined) || null;
+}
+
+function kv(): KVBinding | null {
+  return ((env as any).CMS_KV as KVBinding | undefined) || null;
 }
 
 function merged(input: any): SiteSettings {
@@ -33,18 +40,34 @@ function merged(input: any): SiteSettings {
   } as SiteSettings;
 }
 
+function remember(value: SiteSettings) {
+  memoryCache = { value, expiresAt: Date.now() + MEMORY_TTL_MS };
+  return value;
+}
+
 export async function getSiteSettings(): Promise<SiteSettings> {
+  if (memoryCache && memoryCache.expiresAt > Date.now()) return memoryCache.value;
+
+  const cache = kv();
+  if (cache) {
+    const cached = await cache.get(CACHE_KEY).catch(() => null);
+    if (cached) {
+      try { return remember(merged(JSON.parse(cached))); } catch {}
+    }
+  }
+
   const db = database();
-  if (!db) return merged(defaults);
+  if (!db) return remember(merged(defaults));
 
   try {
     const row = await db
       .prepare("SELECT value_json, updated_at FROM cms_settings WHERE key = 'site' LIMIT 1")
       .first<SettingsRow>();
-    if (!row?.value_json) return merged(defaults);
-    return merged(JSON.parse(row.value_json));
+    const settings = row?.value_json ? merged(JSON.parse(row.value_json)) : merged(defaults);
+    if (cache) await cache.put(CACHE_KEY, JSON.stringify(settings), { expirationTtl: 3600 }).catch(() => {});
+    return remember(settings);
   } catch {
-    return merged(defaults);
+    return remember(merged(defaults));
   }
 }
 
@@ -60,5 +83,10 @@ export async function saveSiteSettings(settings: SiteSettings, updatedBy: string
       updated_by = excluded.updated_by`)
     .bind(JSON.stringify(settings), updatedAt, updatedBy)
     .run();
+
+  const clean = merged(settings);
+  memoryCache = { value: clean, expiresAt: Date.now() + MEMORY_TTL_MS };
+  const cache = kv();
+  if (cache) await cache.put(CACHE_KEY, JSON.stringify(clean), { expirationTtl: 3600 }).catch(() => {});
   return updatedAt;
 }
