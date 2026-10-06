@@ -1,10 +1,10 @@
 {
-  "name": "JobAndUpdates",
+  "name": "jobandupdates.com",
   "tagline": "Clear updates for jobs, exams, results, scholarships and schemes.",
   "description": "Latest job updates, exam notices, results, scholarships and government scheme information with important dates, eligibility and official links.",
   "url": "https://jobandupdates.com",
   "email": "",
-  "logoText": "JobAndUpdates",
+  "logoText": "jobandupdates.com",
   "logoUrl": "/brand/jobandupdates-logo.svg",
   "primaryColor": "#1769e0",
   "author": "Editorial Team",
@@ -83,11 +83,11 @@
       "href": "/about/"
     }
   ],
-  "shortName": "JobAndUpdates",
-  "homepageSeoTitle": "JobAndUpdates: Jobs, Exams, Results, Scholarships & Schemes",
+  "shortName": "jobandupdates.com",
+  "homepageSeoTitle": "jobandupdates.com: Jobs, Exams, Results, Scholarships & Schemes",
   "defaultMetaDescription": "Latest job updates, exam notices, results, scholarships and government scheme information with important dates, eligibility and official links.",
   "titleTemplate": "%title% | %site%",
   "faviconUrl": "/brand/jobandupdates-logo.svg",
-  "defaultOgImageAlt": "JobAndUpdates",
+  "defaultOgImageAlt": "jobandupdates.com",
   "twitterHandle": ""
 }
