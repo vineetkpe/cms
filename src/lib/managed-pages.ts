@@ -9,8 +9,12 @@ export type ManagedPage = {
   kicker?: string;
   body: string;
   seoTitle?: string;
+  seoDescription?: string;
   canonical?: string;
+  socialTitle?: string;
+  socialDescription?: string;
   ogImage?: string;
+  ogImageAlt?: string;
   noindex?: boolean;
 };
 export type ManagedPages = Record<ManagedPageKey, ManagedPage>;
@@ -36,8 +40,12 @@ function normalizePage(key: ManagedPageKey, input: any): ManagedPage {
     kicker: String(source.kicker || fallback.kicker || ''),
     body: String(source.body || fallback.body || ''),
     seoTitle: String(source.seoTitle || ''),
+    seoDescription: String(source.seoDescription || ''),
     canonical: String(source.canonical || ''),
+    socialTitle: String(source.socialTitle || ''),
+    socialDescription: String(source.socialDescription || ''),
     ogImage: String(source.ogImage || ''),
+    ogImageAlt: String(source.ogImageAlt || ''),
     noindex: Boolean(source.noindex),
   };
 }

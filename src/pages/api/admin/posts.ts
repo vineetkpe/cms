@@ -3,6 +3,7 @@ import { authError, requireAdmin } from '../../../lib/auth';
 import { deleteDbPost, getPostStatus, listDbPosts, moveDbPost, saveDbRevision } from '../../../lib/db-posts';
 import type { AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
+import { safePublicUrl } from '../../../lib/security';
 
 export const prerender = false;
 
@@ -13,8 +14,17 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
   if (!String(input.description || '').trim()) throw new Error('Description is required.');
   if (!String(input.body || '').trim()) throw new Error('Article body is required.');
 
-  const canonical = String(input.canonical || '').trim();
-  if (canonical) new URL(canonical);
+  const canonicalRaw = String(input.canonical || '').trim();
+  const canonical = canonicalRaw ? safePublicUrl(canonicalRaw) : '';
+  if (canonicalRaw && !canonical) throw new Error('Canonical URL must use http or https.');
+
+  const featuredImageRaw = String(input.featuredImage || '').trim();
+  const featuredImage = featuredImageRaw ? safePublicUrl(featuredImageRaw, true) : '';
+  if (featuredImageRaw && !featuredImage) throw new Error('Featured image URL must be a relative path or http/https URL.');
+
+  const ogImageRaw = String(input.ogImage || '').trim();
+  const ogImage = ogImageRaw ? safePublicUrl(ogImageRaw, true) : '';
+  if (ogImageRaw && !ogImage) throw new Error('Social image URL must be a relative path or http/https URL.');
   const publishAt = input.publishAt ? new Date(String(input.publishAt)).toISOString() : undefined;
   const pubDate = String(input.pubDate || (publishAt ? publishAt.slice(0, 10) : new Date().toISOString().slice(0, 10)));
   if (Number.isNaN(Date.parse(pubDate))) throw new Error('Publish date is invalid.');
@@ -35,7 +45,7 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     pubDate,
     publishAt,
     updatedDate: input.updatedDate ? String(input.updatedDate) : undefined,
-    featuredImage: input.featuredImage ? String(input.featuredImage).trim() : undefined,
+    featuredImage: featuredImage || undefined,
     featuredImageAlt: input.featuredImageAlt ? String(input.featuredImageAlt).trim().slice(0, 180) : undefined,
     seoTitle: input.seoTitle ? String(input.seoTitle).trim().slice(0, 180) : undefined,
     seoDescription: input.seoDescription ? String(input.seoDescription).trim().slice(0, 320) : undefined,
@@ -43,7 +53,8 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     canonical: canonical || undefined,
     ogTitle: input.ogTitle ? String(input.ogTitle).trim().slice(0, 180) : undefined,
     ogDescription: input.ogDescription ? String(input.ogDescription).trim().slice(0, 320) : undefined,
-    ogImage: input.ogImage ? String(input.ogImage).trim().slice(0, 500) : undefined,
+    ogImage: ogImage || undefined,
+    ogImageAlt: input.ogImageAlt ? String(input.ogImageAlt).trim().slice(0, 180) : undefined,
     template: input.template ? String(input.template).trim().slice(0, 80) : undefined,
     draft: Boolean(input.draft),
     noindex: Boolean(input.noindex),

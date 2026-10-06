@@ -2,9 +2,13 @@
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getPublishedTagCounts } from '../lib/posts';
+import { getSiteSettings } from '../lib/site-settings';
+const site=await getSiteSettings();
 const tags=(await getPublishedTagCounts()).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
+const canonical=new URL('/tags/',site.url).toString();
+const breadcrumbSchema={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:site.url},{'@type':'ListItem',position:2,name:'Tags',item:canonical}]};
 ---
-<BaseLayout title="Tags" description="Browse all article tags.">
+<BaseLayout title="Browse Topics & Tags" description="Browse article topics and tags across jobs, exams, results, scholarships, schemes and other updates." canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
   <section class="hero"><div class="container hero-copy"><div class="kicker">Explore</div><h1>Tags</h1><p>Find articles by specific subject.</p></div></section>
   <section class="section"><div class="container tag-cloud">{tags.map((item) => <a href={`/tag/${item.slug}/`}>{item.name} <span>{item.count}</span></a>)}</div></section>
 </BaseLayout>

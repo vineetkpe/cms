@@ -11,7 +11,16 @@ const trustLinks=[
   ['About','/about/'],['Editorial Policy','/editorial-policy/'],['Corrections Policy','/corrections-policy/'],['Advertising & Disclosure','/advertising-policy/'],['Privacy','/privacy/'],['Terms','/terms/'],['Disclaimer','/disclaimer/'],['Contact','/contact/']
 ];
 ---
-<BaseLayout title={page.seoTitle || page.title} description={page.description} canonical={page.canonical || undefined} image={page.ogImage || undefined} noindex={Boolean(page.noindex)}>
+<BaseLayout
+  title={page.seoTitle || page.title}
+  description={page.seoDescription || page.description}
+  canonical={page.canonical || undefined}
+  image={page.ogImage || undefined}
+  imageAlt={page.ogImageAlt || page.title}
+  socialTitle={page.socialTitle || undefined}
+  socialDescription={page.socialDescription || undefined}
+  noindex={Boolean(page.noindex)}
+>
   <section class="managed-hero"><div class="container"><div class="kicker">{page.kicker}</div><h1>{page.title}</h1><p>{page.description}</p></div></section>
   <section class="managed-section"><div class="container managed-layout"><aside class="trust-nav"><strong>Publication information</strong>{trustLinks.map(([label,href])=><a href={href} aria-current={Astro.url.pathname===href?'page':undefined}>{label}</a>)}</aside><article class="managed-copy">{blocks.map((block)=>block.type==='h2'?<h2>{block.text}</h2>:block.type==='list'?<ul>{block.items?.map((item)=><li>{item}</li>)}</ul>:<p>{block.text}</p>)}<slot /></article></div></section>
 </BaseLayout>

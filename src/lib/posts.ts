@@ -56,6 +56,7 @@ function dbToEntry(post: AdminPost): any {
       ogTitle: post.ogTitle,
       ogDescription: post.ogDescription,
       ogImage: post.ogImage,
+      ogImageAlt: post.ogImageAlt,
       template: post.template,
       draft: post.draft,
       noindex: post.noindex,

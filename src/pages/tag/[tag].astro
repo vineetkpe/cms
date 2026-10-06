@@ -2,8 +2,10 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedPostsByTag, slugify } from '../../lib/posts';
+import { getSiteSettings } from '../../lib/site-settings';
 
 export const prerender = false;
+const site = await getSiteSettings();
 const tagSlug = String(Astro.params.tag || '');
 const perPage = 24;
 const requested = Number.parseInt(Astro.url.searchParams.get('page') || '1', 10);
@@ -12,8 +14,21 @@ const { posts, total } = await getPublishedPostsByTag(tagSlug, perPage, (page - 
 if (!posts.length) return Astro.redirect('/404/');
 const name = posts.flatMap((post) => post.data.tags).find((value: string) => slugify(value) === tagSlug) || tagSlug;
 const pages = Math.max(1, Math.ceil(total / perPage));
+const canonicalUrl = new URL(`/tag/${tagSlug}/`, site.url);
+if (page > 1) canonicalUrl.searchParams.set('page', String(page));
+const canonical = canonicalUrl.toString();
+const title = page > 1 ? `${name} Articles & Updates – Page ${page}` : `${name} Articles & Updates`;
+const description = `Browse ${name} articles and updates${page > 1 ? `, page ${page} of ${pages}` : ''}.`;
+const breadcrumbSchema = {
+  '@context':'https://schema.org','@type':'BreadcrumbList',
+  itemListElement:[
+    {'@type':'ListItem',position:1,name:'Home',item:site.url},
+    {'@type':'ListItem',position:2,name:'Tags',item:new URL('/tags/',site.url).toString()},
+    {'@type':'ListItem',position:3,name,item:canonical}
+  ]
+};
 ---
-<BaseLayout title={name} description={`Articles tagged ${name}.`}>
+<BaseLayout title={title} description={description} canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
   <section class="hero"><div class="container hero-copy"><div class="kicker">Tag</div><h1>{name}</h1><p>{total} article{total === 1 ? '' : 's'} tagged {name}.</p></div></section>
   <section class="section"><div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination">{page > 1 ? <a href={page === 2 ? `/tag/${tagSlug}/` : `/tag/${tagSlug}/?page=${page - 1}`}>← Previous</a> : <span></span>}<span>Page {page} of {pages}</span>{page < pages ? <a href={`/tag/${tagSlug}/?page=${page + 1}`}>Next →</a> : <span></span>}</nav>}</div></section>
 </BaseLayout>

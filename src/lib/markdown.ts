@@ -20,6 +20,7 @@ export type AdminPost = {
   ogTitle?: string;
   ogDescription?: string;
   ogImage?: string;
+  ogImageAlt?: string;
   template?: string;
   draft: boolean;
   noindex: boolean;
@@ -56,6 +57,7 @@ export function toMarkdown(post: AdminPost) {
     post.ogTitle ? `ogTitle: ${q(post.ogTitle)}` : null,
     post.ogDescription ? `ogDescription: ${q(post.ogDescription)}` : null,
     post.ogImage ? `ogImage: ${q(post.ogImage)}` : null,
+    post.ogImageAlt ? `ogImageAlt: ${q(post.ogImageAlt)}` : null,
     post.template ? `template: ${q(post.template)}` : null,
     `draft: ${Boolean(post.draft)}`,
     `noindex: ${Boolean(post.noindex)}`,
@@ -118,6 +120,7 @@ export function parseMarkdown(text: string, slug: string, sha?: string): AdminPo
     ogTitle: meta.ogTitle ? String(meta.ogTitle) : undefined,
     ogDescription: meta.ogDescription ? String(meta.ogDescription) : undefined,
     ogImage: meta.ogImage ? String(meta.ogImage) : undefined,
+    ogImageAlt: meta.ogImageAlt ? String(meta.ogImageAlt) : undefined,
     template: meta.template ? String(meta.template) : undefined,
     draft: Boolean(meta.draft),
     noindex: Boolean(meta.noindex),

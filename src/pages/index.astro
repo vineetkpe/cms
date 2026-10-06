@@ -18,7 +18,7 @@ const categories = builtIns.map((name) => ({ name, count: countMap.get(slugify(n
 const featured = featuredResult || latest[0];
 const secondary = latest.filter((post) => post.id !== featured?.id).slice(0, 3);
 ---
-<BaseLayout title={site.name} description={site.description} siteSettings={site}>
+<BaseLayout title={site.name} description={site.defaultMetaDescription || site.description} canonical={new URL('/',site.url).toString()} siteSettings={site}>
   <section class="news-hero">
     <div class="container news-hero-grid">
       <div>

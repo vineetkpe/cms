@@ -22,6 +22,7 @@ const posts = defineCollection({
     ogTitle: z.string().optional(),
     ogDescription: z.string().optional(),
     ogImage: z.string().optional(),
+    ogImageAlt: z.string().optional(),
     template: z.string().optional(),
     draft: z.boolean().default(false),
     noindex: z.boolean().default(false),

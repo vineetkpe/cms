@@ -2,8 +2,11 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedPostsByCategory, slugify } from '../../lib/posts';
+import { getSiteSettings } from '../../lib/site-settings';
 
 export const prerender = false;
+
+const site = await getSiteSettings();
 const builtIns = ['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
 const categorySlug = String(Astro.params.category || '');
 const perPage = 24;
@@ -15,8 +18,50 @@ const name = posts[0]?.data.category || builtInName;
 if (!name) return Astro.redirect('/404/');
 const pages = Math.max(1, Math.ceil(total / perPage));
 if (page > pages && total > 0) return Astro.redirect(`/category/${categorySlug}/`);
+
+const seoDefaults: Record<string,{title:string;description:string}> = {
+  'job-updates': {
+    title: 'Latest Job Updates, Recruitment & Vacancies',
+    description: 'Latest job updates, recruitment notifications, vacancies, application dates, eligibility details and official notices.'
+  },
+  'exam-updates': {
+    title: 'Latest Exam Updates, Dates & Admit Cards',
+    description: 'Latest exam updates including application dates, exam schedules, admit cards, notices and important deadlines.'
+  },
+  'result-updates': {
+    title: 'Latest Result Updates & Score Announcements',
+    description: 'Latest result updates, score announcements, merit lists and official result links for exams and recruitment.'
+  },
+  'scholarship': {
+    title: 'Latest Scholarship Updates & Opportunities',
+    description: 'Latest scholarship opportunities, eligibility details, application dates, documents and official application information.'
+  },
+  'scheme': {
+    title: 'Latest Government Scheme Updates & Benefits',
+    description: 'Latest government scheme updates, eligibility, benefits, application details, documents and official information.'
+  }
+};
+const fallback = {
+  title: `Latest ${name}`,
+  description: `Latest ${name.toLowerCase()} published by the editorial team, with important dates, eligibility and official information.`
+};
+const seo = seoDefaults[categorySlug] || fallback;
+const seoTitle = page > 1 ? `${seo.title} – Page ${page}` : seo.title;
+const seoDescription = page > 1 ? `${seo.description} Page ${page} of ${pages}.` : seo.description;
+const canonicalUrl = new URL(`/category/${categorySlug}/`, site.url);
+if (page > 1) canonicalUrl.searchParams.set('page', String(page));
+const canonical = canonicalUrl.toString();
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: site.url },
+    { '@type': 'ListItem', position: 2, name: 'Categories', item: new URL('/categories/', site.url).toString() },
+    { '@type': 'ListItem', position: 3, name, item: canonical }
+  ]
+};
 ---
-<BaseLayout title={name} description={`Latest ${name} and important updates.`}>
-  <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Category</div><h1>{name}</h1><p>Latest {name.toLowerCase()} published by the editorial team.</p></div><div class="archive-summary"><div><strong>{total}</strong><span>published updates</span></div><div><strong>{page > 1 ? `Page ${page}` : 'Newest first'}</strong><span>archive order</span></div></div></div></section>
+<BaseLayout title={seoTitle} description={seoDescription} canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
+  <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Category</div><h1>{name}</h1><p>{seo.description}</p></div><div class="archive-summary"><div><strong>{total}</strong><span>published updates</span></div><div><strong>{page > 1 ? `Page ${page}` : 'Newest first'}</strong><span>archive order</span></div></div></div></section>
   <section class="section"><div class="container">{posts.length ? <><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination" aria-label="Category pagination">{page > 1 ? <a href={page === 2 ? `/category/${categorySlug}/` : `/category/${categorySlug}/?page=${page - 1}`}>← Previous</a> : <span></span>}<span>Page {page} of {pages}</span>{page < pages ? <a href={`/category/${categorySlug}/?page=${page + 1}`}>Next →</a> : <span></span>}</nav>}</> : <div class="empty-state"><strong>No {name.toLowerCase()} yet.</strong><p>This category is ready. New posts assigned to it will appear here automatically.</p><a href="/articles/">Browse all published updates →</a></div>}</div></section>
 </BaseLayout>

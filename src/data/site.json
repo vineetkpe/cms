@@ -54,9 +54,28 @@
     "youtube": ""
   },
   "navigation": [
-    { "label": "Home", "href": "/" },
-    { "label": "Guides", "href": "/category/guides/" },
-    { "label": "News", "href": "/category/news/" },
-    { "label": "About", "href": "/about/" }
-  ]
+    {
+      "label": "Home",
+      "href": "/"
+    },
+    {
+      "label": "Guides",
+      "href": "/category/guides/"
+    },
+    {
+      "label": "News",
+      "href": "/category/news/"
+    },
+    {
+      "label": "About",
+      "href": "/about/"
+    }
+  ],
+  "shortName": "",
+  "homepageSeoTitle": "",
+  "defaultMetaDescription": "",
+  "titleTemplate": "%title% | %site%",
+  "faviconUrl": "",
+  "defaultOgImageAlt": "",
+  "twitterHandle": ""
 }

@@ -3,7 +3,9 @@ export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedPostPage } from '../../lib/posts';
+import { getSiteSettings } from '../../lib/site-settings';
 
+const site = await getSiteSettings();
 const perPage = 18;
 const page = Number.parseInt(String(Astro.params.page || ''), 10);
 if (!Number.isSafeInteger(page) || page < 2) return Astro.redirect('/404/');
@@ -11,9 +13,18 @@ const offset = (page - 1) * perPage;
 const { posts, total } = await getPublishedPostPage(perPage, offset);
 const pages = Math.max(1, Math.ceil(total / perPage));
 if (page > pages || !posts.length) return Astro.redirect('/404/');
+const canonical = new URL(`/articles/${page}/`, site.url).toString();
+const breadcrumbSchema = {
+  '@context':'https://schema.org','@type':'BreadcrumbList',
+  itemListElement:[
+    {'@type':'ListItem',position:1,name:'Home',item:site.url},
+    {'@type':'ListItem',position:2,name:'All Updates',item:new URL('/articles/',site.url).toString()},
+    {'@type':'ListItem',position:3,name:`Page ${page}`,item:canonical}
+  ]
+};
 ---
-<BaseLayout title={`Articles – Page ${page}`} description={`Browse published articles, page ${page}.`}>
-  <section class="hero"><div class="container hero-copy"><div class="kicker">Archive</div><h1>All articles</h1><p>Page {page} of {pages}.</p></div></section>
+<BaseLayout title={`Latest Updates – Page ${page}`} description={`Browse the latest job, exam, result, scholarship and scheme updates, page ${page} of ${pages}.`} canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
+  <section class="hero"><div class="container hero-copy"><div class="kicker">Archive</div><h1>All updates</h1><p>Page {page} of {pages}.</p></div></section>
   <section class="section"><div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div><nav class="archive-pagination"><a href={page === 2 ? '/articles/' : `/articles/${page - 1}/`}>← Previous</a><span>Page {page} of {pages}</span>{page < pages ? <a href={`/articles/${page + 1}/`}>Next →</a> : <span></span>}</nav></div></section>
   <style>.archive-pagination{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-top:38px;padding-top:18px;border-top:1px solid var(--line)}.archive-pagination a{color:var(--accent);font-weight:750}.archive-pagination a:last-child{text-align:right}</style>
 </BaseLayout>

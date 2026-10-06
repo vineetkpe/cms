@@ -2,14 +2,19 @@
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getPublishedCategoryCounts, slugify } from '../lib/posts';
+import { getSiteSettings } from '../lib/site-settings';
+
+const site=await getSiteSettings();
 const builtIns=['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
 const counts=await getPublishedCategoryCounts();
 const map=new Map(counts.map((item)=>[item.slug,item]));
 const custom=counts.filter((item)=>!builtIns.some((name)=>slugify(name)===item.slug));
 const categories=[...builtIns.map((name)=>({name,slug:slugify(name),count:map.get(slugify(name))?.count||0})),...custom.map((item)=>({name:item.name,slug:item.slug,count:item.count}))];
 const total=counts.reduce((sum,item)=>sum+item.count,0);
+const canonical=new URL('/categories/',site.url).toString();
+const breadcrumbSchema={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:site.url},{'@type':'ListItem',position:2,name:'Categories',item:canonical}]};
 ---
-<BaseLayout title="Categories" description="Browse job, exam, result, scholarship and scheme updates by category.">
+<BaseLayout title="Job, Exam, Result, Scholarship & Scheme Categories" description="Browse all update categories including jobs, exams, results, scholarships, government schemes and custom topics." canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
   <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Explore</div><h1>Categories</h1><p>Find updates by the type of information you need.</p></div><div class="archive-summary"><div><strong>{categories.length}</strong><span>categories</span></div><div><strong>{total}</strong><span>published updates</span></div></div></div></section>
   <section class="section"><div class="container taxonomy-grid">{categories.map((item)=><a class="taxonomy-card" href={`/category/${item.slug}/`}><strong>{item.name}</strong><span>{item.count} update{item.count===1?'':'s'} →</span></a>)}</div></section>
 </BaseLayout>

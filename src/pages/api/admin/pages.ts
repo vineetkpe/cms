@@ -14,14 +14,18 @@ function cleanPages(input: any): ManagedPages {
     const kicker = text(page.kicker, 80);
     const body = String(page.body || '').trim().slice(0, 50000);
     const seoTitle = text(page.seoTitle, 180);
+    const seoDescription = text(page.seoDescription, 320);
     const canonicalRaw = text(page.canonical, 500);
     const canonical = canonicalRaw ? safePublicUrl(canonicalRaw) : '';
+    const socialTitle = text(page.socialTitle, 180);
+    const socialDescription = text(page.socialDescription, 320);
     const ogRaw = text(page.ogImage, 500);
     const ogImage = ogRaw ? safePublicUrl(ogRaw, true) : '';
+    const ogImageAlt = text(page.ogImageAlt, 180);
     if (canonicalRaw && !canonical) throw new Error(`Canonical URL is invalid for ${key}.`);
     if (ogRaw && !ogImage) throw new Error(`Social image URL is invalid for ${key}.`);
     if (!title || !description || !body) throw new Error(`Title, description and body are required for ${key}.`);
-    out[key] = { title, description, kicker, body, seoTitle, canonical, ogImage, noindex: Boolean(page.noindex) };
+    out[key] = { title, description, kicker, body, seoTitle, seoDescription, canonical, socialTitle, socialDescription, ogImage, ogImageAlt, noindex: Boolean(page.noindex) };
   }
   return out as ManagedPages;
 }

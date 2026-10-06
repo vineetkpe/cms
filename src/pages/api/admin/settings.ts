@@ -63,6 +63,19 @@ export const PUT: APIRoute = async ({ request }) => {
     const googleAnalyticsId = text(settings.googleAnalyticsId, 40);
     if (googleAnalyticsId && !/^G-[A-Z0-9]+$/i.test(googleAnalyticsId)) throw new Error('Google Analytics ID must look like G-XXXXXXXX.');
 
+    const shortName = text(settings.shortName, 60);
+    const homepageSeoTitle = text(settings.homepageSeoTitle, 180);
+    const defaultMetaDescription = text(settings.defaultMetaDescription, 320);
+    const titleTemplateRaw = text(settings.titleTemplate || '%title% | %site%', 120);
+    const titleTemplate = titleTemplateRaw.includes('%title%') ? titleTemplateRaw : '%title% | %site%';
+    const faviconRaw = text(settings.faviconUrl, 500);
+    const faviconUrl = faviconRaw ? safePublicUrl(faviconRaw, true) : '';
+    if (faviconRaw && !faviconUrl) throw new Error('Favicon URL must be a relative path or http/https URL.');
+    const defaultOgImageAlt = text(settings.defaultOgImageAlt, 180);
+    let twitterHandle = text(settings.twitterHandle, 40).trim();
+    if (twitterHandle && !twitterHandle.startsWith('@')) twitterHandle = '@' + twitterHandle;
+    if (twitterHandle && !/^@[A-Za-z0-9_]{1,15}$/.test(twitterHandle)) throw new Error('X / Twitter handle is invalid.');
+
     const logoUrlRaw = text(settings.logoUrl, 500);
     const logoUrl = logoUrlRaw ? safePublicUrl(logoUrlRaw, true) : '';
     if (logoUrlRaw && !logoUrl) throw new Error('Logo URL must be a relative path or http/https URL.');
@@ -88,6 +101,13 @@ export const PUT: APIRoute = async ({ request }) => {
 
     const clean = {
       name: text(settings.name, 80),
+      shortName,
+      homepageSeoTitle,
+      defaultMetaDescription,
+      titleTemplate,
+      faviconUrl,
+      defaultOgImageAlt,
+      twitterHandle,
       tagline: text(settings.tagline, 180),
       description: text(settings.description, 320),
       url: safeOrigin(settings.url),

@@ -2,8 +2,10 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedPostsByAuthor } from '../../lib/posts';
+import { getSiteSettings } from '../../lib/site-settings';
 
 export const prerender = false;
+const site = await getSiteSettings();
 const authorSlug = String(Astro.params.author || '');
 const perPage = 24;
 const requested = Number.parseInt(Astro.url.searchParams.get('page') || '1', 10);
@@ -12,9 +14,29 @@ const { posts, total } = await getPublishedPostsByAuthor(authorSlug, perPage, (p
 if (!posts.length) return Astro.redirect('/404/');
 const name = posts[0].data.author;
 const pages = Math.max(1, Math.ceil(total / perPage));
-const schema = { '@context': 'https://schema.org', '@type': 'Person', name };
+const canonicalUrl = new URL(`/author/${authorSlug}/`, site.url);
+if (page > 1) canonicalUrl.searchParams.set('page', String(page));
+const canonical = canonicalUrl.toString();
+const title = page > 1 ? `${name} Articles – Page ${page}` : `${name} – Author`;
+const description = `Read articles and updates written by ${name}${page > 1 ? `, page ${page} of ${pages}` : ''}.`;
+const profileSchema = {
+  '@context':'https://schema.org',
+  '@type':'ProfilePage',
+  '@id':canonical,
+  url:canonical,
+  name:title,
+  mainEntity:{'@type':'Person',name,url:new URL(`/author/${authorSlug}/`,site.url).toString()}
+};
+const breadcrumbSchema = {
+  '@context':'https://schema.org','@type':'BreadcrumbList',
+  itemListElement:[
+    {'@type':'ListItem',position:1,name:'Home',item:site.url},
+    {'@type':'ListItem',position:2,name:'Authors',item:new URL('/authors/',site.url).toString()},
+    {'@type':'ListItem',position:3,name,item:canonical}
+  ]
+};
 ---
-<BaseLayout title={name} description={`Articles written by ${name}.`} schema={schema}>
+<BaseLayout title={title} description={description} canonical={canonical} schema={[profileSchema,breadcrumbSchema]} siteSettings={site}>
   <section class="hero"><div class="container hero-copy"><div class="kicker">Author</div><h1>{name}</h1><p>{total} published article{total === 1 ? '' : 's'}.</p></div></section>
   <section class="section"><div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination">{page > 1 ? <a href={page === 2 ? `/author/${authorSlug}/` : `/author/${authorSlug}/?page=${page - 1}`}>← Previous</a> : <span></span>}<span>Page {page} of {pages}</span>{page < pages ? <a href={`/author/${authorSlug}/?page=${page + 1}`}>Next →</a> : <span></span>}</nav>}</div></section>
 </BaseLayout>

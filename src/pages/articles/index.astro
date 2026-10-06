@@ -3,18 +3,28 @@ export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedCategoryCounts, getPublishedPostPage } from '../../lib/posts';
+import { getSiteSettings } from '../../lib/site-settings';
 
+const site = await getSiteSettings();
 const perPage = 18;
 const [{ posts, total }, categories] = await Promise.all([
   getPublishedPostPage(perPage, 0),
   getPublishedCategoryCounts(),
 ]);
 const pages = Math.max(1, Math.ceil(total / perPage));
+const canonical = new URL('/articles/', site.url).toString();
+const breadcrumbSchema = {
+  '@context':'https://schema.org','@type':'BreadcrumbList',
+  itemListElement:[
+    {'@type':'ListItem',position:1,name:'Home',item:site.url},
+    {'@type':'ListItem',position:2,name:'All Updates',item:canonical}
+  ]
+};
 ---
-<BaseLayout title="All articles" description="Browse the complete publication archive, latest guides and editorial coverage.">
+<BaseLayout title="Latest Job, Exam, Result, Scholarship & Scheme Updates" description="Browse the latest job, exam, result, scholarship and government scheme updates from the complete publication archive." canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
   <section class="hero">
     <div class="container hero-copy archive-hero-grid">
-      <div><div class="kicker">Publication archive</div><h1>All articles</h1><p>Browse the complete publication archive, organized for fast discovery and easy reading.</p></div>
+      <div><div class="kicker">Publication archive</div><h1>All updates</h1><p>Browse the complete publication archive, organized for fast discovery and easy reading.</p></div>
       <div class="archive-summary" aria-label="Archive summary"><div><strong>{total}</strong><span>published articles</span></div><div><strong>{categories.length}</strong><span>topics</span></div></div>
     </div>
   </section>

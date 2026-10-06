@@ -2,9 +2,13 @@
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getPublishedAuthorCounts } from '../lib/posts';
+import { getSiteSettings } from '../lib/site-settings';
+const site=await getSiteSettings();
 const authors=await getPublishedAuthorCounts();
+const canonical=new URL('/authors/',site.url).toString();
+const breadcrumbSchema={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:site.url},{'@type':'ListItem',position:2,name:'Authors',item:canonical}]};
 ---
-<BaseLayout title="Authors" description="Meet the authors and contributors behind this publication.">
+<BaseLayout title="Authors & Contributors" description="Meet the authors and contributors behind this publication and browse their latest articles and updates." canonical={canonical} schema={breadcrumbSchema} schemaType="CollectionPage" siteSettings={site}>
   <section class="archive-hero"><div class="container archive-hero-inner"><div class="kicker">People</div><h1>Authors</h1><p>Writers and contributors behind the articles on this publication.</p></div></section>
   <section class="section"><div class="container"><div class="author-index-grid">{authors.map((author) => <a class="author-index-card" href={`/author/${author.slug}/`}><span class="author-avatar" aria-hidden="true">{author.name.slice(0,1).toUpperCase()}</span><span><strong>{author.name}</strong><small>{author.count} article{author.count === 1 ? '' : 's'}</small></span><span class="arrow" aria-hidden="true">→</span></a>)}</div></div></section>
   <style>.archive-hero{border-bottom:1px solid var(--line)}.archive-hero-inner{padding:64px 0 42px}.archive-hero h1{font-size:clamp(2.7rem,7vw,5.5rem);letter-spacing:-.065em;line-height:.95;margin:10px 0 14px}.archive-hero p{color:var(--muted);max-width:590px}.author-index-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.author-index-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;border:1px solid var(--line);border-radius:var(--radius);padding:18px}.author-index-card:hover{border-color:var(--line-strong);background:var(--surface)}.author-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--text);color:#fff;font-weight:800}.author-index-card strong,.author-index-card small{display:block}.author-index-card small{color:var(--muted);margin-top:3px}.arrow{font-size:1.2rem}@media(max-width:650px){.author-index-grid{grid-template-columns:1fr}}</style>
