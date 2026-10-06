@@ -64,7 +64,18 @@ export const prerender = true;
         <div class="card stack">
           <div class="publish-state"><strong class="label">Publishing</strong><span class="pill draft" id="statusPill">Draft</span></div>
           <div class="field"><label for="publishAt">Publish date & time</label><input id="publishAt" type="datetime-local" /><small>Future time = scheduled publish. Scheduler checks every 5 minutes.</small></div>
-          <div class="field"><label for="category">Category</label><input id="category" value="Guides" maxlength="80" /></div>
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="Job Updates">Job Updates</option>
+              <option value="Exam Updates">Exam Updates</option>
+              <option value="Result Updates">Result Updates</option>
+              <option value="Scholarship">Scholarship</option>
+              <option value="Scheme">Scheme</option>
+              <option value="__custom__">Custom category…</option>
+            </select>
+            <input id="customCategory" maxlength="80" placeholder="Type custom category" hidden />
+          </div>
           <div class="field"><label for="tags">Tags</label><input id="tags" placeholder="seo, guides, news" /></div>
           <div class="field"><label for="author">Author</label><input id="author" value="Editorial Team" maxlength="100" /></div>
           <div class="checks">
@@ -173,11 +184,32 @@ export const prerender = true;
   function addFaq(item={question:'',answer:''}){ const row=document.createElement('div');row.className='faq-row';row.innerHTML=`<input data-faq="q" placeholder="Question"><textarea data-faq="a" rows="2" placeholder="Answer"></textarea><button class="btn danger" type="button">×</button>`;row.querySelector('[data-faq=q]').value=item.question||'';row.querySelector('[data-faq=a]').value=item.answer||'';row.querySelector('button').onclick=()=>{row.remove();dirty=true};$('faqList').append(row); }
   $('addFaq').onclick=()=>addFaq();
 
-  function formData(draft){ const publishAt=isoFromLocal($('publishAt').value); const editingPublished=current&&!current.draft; return { slug:$('slug').value,originalSlug:current?.originalSlug||current?.slug,title:$('title').value,description:$('description').value,category:$('category').value,tags:$('tags').value.split(',').map(v=>v.trim()).filter(Boolean),author:$('author').value,pubDate:(publishAt||new Date().toISOString()).slice(0,10),publishAt,updatedDate:!draft&&editingPublished?new Date().toISOString().slice(0,10):current?.updatedDate,featuredImage:$('featuredImage').value,featuredImageAlt:$('featuredImageAlt').value,seoTitle:$('seoTitle').value,seoDescription:$('seoDescription').value,focusKeyword:$('focusKeyword').value,canonical:$('canonical').value,ogTitle:$('ogTitle').value,ogDescription:$('ogDescription').value,ogImage:$('ogImage').value,template:$('template').value,draft,noindex:$('noindex').checked,nofollow:$('nofollow').checked,featured:$('featured').checked,hideAds:$('hideAds').checked,faq:faqData(),body:editorBody(),sha:current?.sha}; }
+  const builtInCategories=['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
+  function categoryValue(){ const selected=$('category').value; return selected==='__custom__' ? $('customCategory').value.trim() : selected; }
+  function setCategoryValue(value){
+    const clean=String(value||'').trim();
+    if(builtInCategories.includes(clean)){
+      $('category').value=clean;
+      $('customCategory').value='';
+      $('customCategory').hidden=true;
+    }else if(clean){
+      $('category').value='__custom__';
+      $('customCategory').value=clean;
+      $('customCategory').hidden=false;
+    }else{
+      $('category').value='Job Updates';
+      $('customCategory').value='';
+      $('customCategory').hidden=true;
+    }
+  }
+  $('category').addEventListener('change',()=>{ $('customCategory').hidden=$('category').value!=='__custom__'; if(!$('customCategory').hidden)$('customCategory').focus(); dirty=true; scheduleAutosave(); });
+  $('customCategory').addEventListener('input',()=>{ dirty=true; scheduleAutosave(); });
 
-  function clearForm(){ current=null;['title','slug','description','tags','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>$(id).value='');$('category').value='Guides';$('author').value='Editorial Team';$('publishAt').value=nowLocalValue();$('template').value='';['featured','hideAds','noindex','nofollow'].forEach(id=>$(id).checked=false);$('faqList').innerHTML='';$('mediaPreview').hidden=true;$('deletePost').hidden=true;$('revisionsCard').hidden=true;$('pageTitle').textContent='New article';setEditorBody('');setStatus('draft');dirty=false;loadAutosave('new');updateMetrics();history.replaceState({},'',location.pathname); }
+  function formData(draft){ const publishAt=isoFromLocal($('publishAt').value); const editingPublished=current&&!current.draft; return { slug:$('slug').value,originalSlug:current?.originalSlug||current?.slug,title:$('title').value,description:$('description').value,category:categoryValue(),tags:$('tags').value.split(',').map(v=>v.trim()).filter(Boolean),author:$('author').value,pubDate:(publishAt||new Date().toISOString()).slice(0,10),publishAt,updatedDate:!draft&&editingPublished?new Date().toISOString().slice(0,10):current?.updatedDate,featuredImage:$('featuredImage').value,featuredImageAlt:$('featuredImageAlt').value,seoTitle:$('seoTitle').value,seoDescription:$('seoDescription').value,focusKeyword:$('focusKeyword').value,canonical:$('canonical').value,ogTitle:$('ogTitle').value,ogDescription:$('ogDescription').value,ogImage:$('ogImage').value,template:$('template').value,draft,noindex:$('noindex').checked,nofollow:$('nofollow').checked,featured:$('featured').checked,hideAds:$('hideAds').checked,faq:faqData(),body:editorBody(),sha:current?.sha}; }
 
-  function loadPost(post){ current={...post,originalSlug:post.slug};$('pageTitle').textContent=`Edit: ${post.title}`;['title','slug','description','category','author','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>$(id).value=post[id]||'');$('tags').value=(post.tags||[]).join(', ');$('publishAt').value=localFromIso(post.publishAt||`${post.pubDate}T00:00:00Z`);$('template').value=post.template||'';['featured','hideAds','noindex','nofollow'].forEach(id=>$(id).checked=!!post[id]);$('faqList').innerHTML='';(post.faq||[]).forEach(addFaq);if(post.featuredImage){$('mediaPreview').src=post.featuredImage;$('mediaPreview').hidden=false}else $('mediaPreview').hidden=true;$('deletePost').hidden=false;setEditorBody(post.body||'');setStatus(statusOf(post));dirty=false;history.replaceState({},'',`${location.pathname}?slug=${encodeURIComponent(post.slug)}`);loadRevisions(post.slug);loadAutosave(post.slug);updateMetrics(); }
+  function clearForm(){ current=null;['title','slug','description','tags','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>$(id).value='');setCategoryValue('Job Updates');$('author').value='Editorial Team';$('publishAt').value=nowLocalValue();$('template').value='';['featured','hideAds','noindex','nofollow'].forEach(id=>$(id).checked=false);$('faqList').innerHTML='';$('mediaPreview').hidden=true;$('deletePost').hidden=true;$('revisionsCard').hidden=true;$('pageTitle').textContent='New article';setEditorBody('');setStatus('draft');dirty=false;loadAutosave('new');updateMetrics();history.replaceState({},'',location.pathname); }
+
+  function loadPost(post){ current={...post,originalSlug:post.slug};$('pageTitle').textContent=`Edit: ${post.title}`;['title','slug','description','author','featuredImage','featuredImageAlt','seoTitle','seoDescription','focusKeyword','canonical','ogTitle','ogDescription','ogImage'].forEach(id=>$(id).value=post[id]||'');setCategoryValue(post.category);$('tags').value=(post.tags||[]).join(', ');$('publishAt').value=localFromIso(post.publishAt||`${post.pubDate}T00:00:00Z`);$('template').value=post.template||'';['featured','hideAds','noindex','nofollow'].forEach(id=>$(id).checked=!!post[id]);$('faqList').innerHTML='';(post.faq||[]).forEach(addFaq);if(post.featuredImage){$('mediaPreview').src=post.featuredImage;$('mediaPreview').hidden=false}else $('mediaPreview').hidden=true;$('deletePost').hidden=false;setEditorBody(post.body||'');setStatus(statusOf(post));dirty=false;history.replaceState({},'',`${location.pathname}?slug=${encodeURIComponent(post.slug)}`);loadRevisions(post.slug);loadAutosave(post.slug);updateMetrics(); }
 
   function updateMetrics(){ const body=editorBody(), words=body.trim()?body.trim().split(/\s+/).length:0;$('wordCount').textContent=`${words} words`;$('readTime').textContent=`${Math.max(1,Math.ceil(words/220))} min read`;$('seoWordsMetric').textContent=words;$('seoTitleMetric').textContent=($('seoTitle').value||$('title').value).length;$('seoDescMetric').textContent=($('seoDescription').value||$('description').value).length;$('descCount').textContent=$('description').value.length; const publishAt=isoFromLocal($('publishAt').value);setStatus(current?.draft?'draft':publishAt&&Date.parse(publishAt)>Date.now()?'scheduled':current?'published':'draft'); }
   ['title','description','seoTitle','seoDescription','publishAt'].forEach(id=>$(id).addEventListener('input',()=>{dirty=true;updateMetrics();scheduleAutosave()})); document.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('change',()=>{dirty=true;scheduleAutosave()}));

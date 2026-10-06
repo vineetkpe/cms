@@ -29,7 +29,7 @@ function cleanPost(input: Partial<AdminPost>): AdminPost {
     originalSlug: input.originalSlug ? slugify(String(input.originalSlug)) : undefined,
     title: String(input.title).trim().slice(0, 180),
     description: String(input.description).trim().slice(0, 320),
-    category: String(input.category || 'Guides').trim().slice(0, 80),
+    category: String(input.category || 'Job Updates').trim().slice(0, 80),
     tags: Array.isArray(input.tags) ? input.tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 20) : [],
     author: String(input.author || 'Editorial Team').trim().slice(0, 100),
     pubDate,
