@@ -1,17 +1,17 @@
 {
-  "name": "SiteName",
-  "tagline": "Useful information, without the noise.",
-  "description": "A fast, independent publication built for useful articles and guides.",
-  "url": "https://cms.vineetkpe.workers.dev",
-  "email": "hello@example.com",
-  "logoText": "SiteName",
-  "logoUrl": "",
+  "name": "JobAndUpdates",
+  "tagline": "Clear updates for jobs, exams, results, scholarships and schemes.",
+  "description": "Latest job updates, exam notices, results, scholarships and government scheme information with important dates, eligibility and official links.",
+  "url": "https://jobandupdates.com",
+  "email": "",
+  "logoText": "JobAndUpdates",
+  "logoUrl": "/brand/jobandupdates-logo.svg",
   "primaryColor": "#1769e0",
   "author": "Editorial Team",
   "language": "en",
   "defaultOgImage": "",
-  "footerText": "Independent articles, guides and useful information.",
-  "homepageEyebrow": "Independent publication",
+  "footerText": "Latest jobs, exams, results, scholarships and scheme updates with clear next steps.",
+  "homepageEyebrow": "Jobs, exams & opportunity updates",
   "theme": {
     "surfaceColor": "#f6f6f3",
     "radius": 14,
@@ -59,23 +59,35 @@
       "href": "/"
     },
     {
-      "label": "Guides",
-      "href": "/category/guides/"
+      "label": "Job Updates",
+      "href": "/category/job-updates/"
     },
     {
-      "label": "News",
-      "href": "/category/news/"
+      "label": "Exam Updates",
+      "href": "/category/exam-updates/"
+    },
+    {
+      "label": "Result Updates",
+      "href": "/category/result-updates/"
+    },
+    {
+      "label": "Scholarship",
+      "href": "/category/scholarship/"
+    },
+    {
+      "label": "Scheme",
+      "href": "/category/scheme/"
     },
     {
       "label": "About",
       "href": "/about/"
     }
   ],
-  "shortName": "",
-  "homepageSeoTitle": "",
-  "defaultMetaDescription": "",
+  "shortName": "JobAndUpdates",
+  "homepageSeoTitle": "JobAndUpdates: Jobs, Exams, Results, Scholarships & Schemes",
+  "defaultMetaDescription": "Latest job updates, exam notices, results, scholarships and government scheme information with important dates, eligibility and official links.",
   "titleTemplate": "%title% | %site%",
-  "faviconUrl": "",
-  "defaultOgImageAlt": "",
+  "faviconUrl": "/brand/jobandupdates-logo.svg",
+  "defaultOgImageAlt": "JobAndUpdates",
   "twitterHandle": ""
 }
