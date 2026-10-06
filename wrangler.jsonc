@@ -32,5 +32,11 @@
       "binding": "CMS_KV",
       "id": "ab0f91cfe73f4aa3b893de5cbefe0c45"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "cms-media"
+    }
   ]
 }
