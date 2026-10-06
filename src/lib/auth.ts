@@ -2,12 +2,24 @@ import { env } from 'cloudflare:workers';
 
 export type CmsRole = 'owner' | 'admin' | 'editor' | 'author';
 
-type StaticUser = {
+
+type AuthUser = {
   username: string;
   displayName: string;
   role: CmsRole;
-  passwordHash: string;
 };
+
+type AuthUserRow = {
+  username: string;
+  display_name: string;
+  role: CmsRole;
+  password_salt: string;
+  password_verifier: string;
+  active: number;
+  legacy_salt: string | null;
+};
+
+type LegacyUser = AuthUser & { passwordHash: string };
 
 type SessionRow = {
   username: string;
@@ -29,35 +41,148 @@ type D1Binding = {
 const ALL_ROLES: CmsRole[] = ['owner', 'admin', 'editor', 'author'];
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const encoder = new TextEncoder();
+const PBKDF2_ITERATIONS = 80_000;
 export const SESSION_COOKIE = '__Host-cms_session';
 export const SESSION_MAX_AGE = 8 * 60 * 60;
-const DUMMY_HASH = 'sha256$Y21zLWR1bW15LXNhbHQ$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
-// Exactly three fixed CMS accounts. Only salted hashes are committed;
-// plaintext passwords are never stored in the repository.
-// These accounts use long, randomly generated passwords, so a fast verifier
-// avoids Worker CPU-limit failures while keeping offline guessing impractical.
-const STATIC_USERS: StaticUser[] = [
-  {
-    username: 'admin',
-    displayName: 'CMS Owner',
-    role: 'owner',
-    passwordHash: 'sha256$rlZgpQppxZlZa-SHU12-HQ$_BcigMMAqAhAlVxCscKFtEoGZNWN1insD-cbdqVNn7k',
-  },
-  {
-    username: 'manager',
-    displayName: 'CMS Admin',
-    role: 'admin',
-    passwordHash: 'sha256$jBav55ko1cOzP6CMA-6twQ$FDqVdUz67Pc3H7gpbWMbMyKr5cipdBrz-u0t4PL85yU',
-  },
-  {
-    username: 'editor',
-    displayName: 'CMS Editor',
-    role: 'editor',
-    passwordHash: 'sha256$calb31PdfcrGkmhiHzkLpQ$mr-cviocszhqVWhU5vEXU4bmytEBe5asxOJeZWVoiaQ',
-  },
+const DUMMY_LEGACY_SALT = '-pt2O8r0Qwzvj8wibqFvJA';
+const DUMMY_PBKDF2_SALT = 'gFNVqA6gb_2f-4zNwrPDhg';
+const DUMMY_VERIFIER = 'MdMHcA5_5Q46IzxU4CMc4i9CX8VuwYLYfraQa_11R9M';
+
+// Temporary migration source. These legacy verifiers are removed from the
+// repository after all three D1 accounts have been migrated.
+const LEGACY_USERS: LegacyUser[] = [
+  { username: 'admin', displayName: 'CMS Owner', role: 'owner', passwordHash: 'sha256$rlZgpQppxZlZa-SHU12-HQ$_BcigMMAqAhAlVxCscKFtEoGZNWN1insD-cbdqVNn7k' },
+  { username: 'manager', displayName: 'CMS Admin', role: 'admin', passwordHash: 'sha256$jBav55ko1cOzP6CMA-6twQ$FDqVdUz67Pc3H7gpbWMbMyKr5cipdBrz-u0t4PL85yU' },
+  { username: 'editor', displayName: 'CMS Editor', role: 'editor', passwordHash: 'sha256$calb31PdfcrGkmhiHzkLpQ$mr-cviocszhqVWhU5vEXU4bmytEBe5asxOJeZWVoiaQ' },
 ];
 
+function cmsDb(): D1Binding {
+  const binding = (env as any).DB as D1Binding | undefined;
+  if (!binding) throw new Error('DB is not configured.');
+  return binding;
+}
+
+function toBase64Url(bytes: Uint8Array) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function fromBase64Url(value: string) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function cleanUsername(value: unknown) {
+  return String(value || '').trim().toLowerCase();
+}
+
+async function pbkdf2(legacyDigest: Uint8Array, salt: Uint8Array) {
+  const key = await crypto.subtle.importKey('raw', legacyDigest, 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    key,
+    256
+  );
+  return new Uint8Array(bits);
+}
+
+async function legacyDigest(password: string, saltValue: string) {
+  const salt = fromBase64Url(saltValue);
+  const passwordBytes = encoder.encode(password);
+  const input = new Uint8Array(salt.length + passwordBytes.length);
+  input.set(salt, 0);
+  input.set(passwordBytes, salt.length);
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', input));
+}
+
+function equalBytes(a: Uint8Array, b: Uint8Array) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function migrateLegacyUser(username: string) {
+  const user = LEGACY_USERS.find((candidate) => candidate.username === username);
+  if (!user) return;
+
+  const db = cmsDb();
+  const existing = await db.prepare('SELECT password_verifier FROM cms_auth_users WHERE username = ? LIMIT 1')
+    .bind(user.username)
+    .first<{ password_verifier: string }>();
+  if (existing?.password_verifier) return;
+
+  const parts = user.passwordHash.split('$');
+  if (parts.length !== 3 || parts[0] !== 'sha256') return;
+
+  const legacySalt = parts[1];
+  const digest = fromBase64Url(parts[2]);
+  const newSalt = new Uint8Array(16);
+  crypto.getRandomValues(newSalt);
+  const verifier = await pbkdf2(digest, newSalt);
+  const now = Math.floor(Date.now() / 1000);
+
+  await db.prepare('INSERT OR REPLACE INTO cms_auth_users (username, display_name, role, password_salt, password_verifier, active, created_at, updated_at, legacy_salt) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)')
+    .bind(user.username, user.displayName, user.role, toBase64Url(newSalt), toBase64Url(verifier), now, now, legacySalt)
+    .run();
+}
+
+async function getAuthUser(username: string) {
+  return cmsDb()
+    .prepare('SELECT username, display_name, role, password_salt, password_verifier, active, legacy_salt FROM cms_auth_users WHERE username = ? AND active = 1 LIMIT 1')
+    .bind(username)
+    .first<AuthUserRow>();
+}
+
+async function verifyStoredPassword(password: string, row: AuthUserRow | null) {
+  const legacySalt = row?.legacy_salt || DUMMY_LEGACY_SALT;
+  const pbkdfSalt = row?.password_salt || DUMMY_PBKDF2_SALT;
+  const expected = fromBase64Url(row?.password_verifier || DUMMY_VERIFIER);
+  const digest = await legacyDigest(password, legacySalt);
+  const derived = await pbkdf2(digest, fromBase64Url(pbkdfSalt));
+  return equalBytes(derived, expected);
+}
+
+export async function authenticateStaticUser(usernameInput: unknown, passwordInput: unknown) {
+  const username = cleanUsername(usernameInput).slice(0, 64);
+  const password = String(passwordInput || '').slice(0, 512);
+  await migrateLegacyUser(username);
+  const row = await getAuthUser(username);
+  const valid = await verifyStoredPassword(password, row);
+  if (!valid || !row) return null;
+  return { username: row.username, displayName: row.display_name, role: row.role as CmsRole };
+}
+
+async function sessionStorageKey(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(token));
+  return toBase64Url(new Uint8Array(digest));
+}
+
+function newSessionToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return toBase64Url(bytes);
+}
+
+export async function createSession(user: AuthUser) {
+  const token = newSessionToken();
+  const tokenHash = await sessionStorageKey(token);
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + SESSION_MAX_AGE;
+  const db = cmsDb();
+
+  await db.prepare('DELETE FROM cms_sessions WHERE expires_at <= ?').bind(now).run().catch(() => {});
+  await db.prepare('INSERT OR REPLACE INTO cms_sessions (token_hash, username, display_name, role, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(tokenHash, user.username, user.displayName, user.role, expiresAt, now)
+    .run();
+
+  return token;
+}
 function cmsDb(): D1Binding {
   const binding = (env as any).DB as D1Binding | undefined;
   if (!binding) throw new Error('DB is not configured.');
@@ -159,13 +284,13 @@ async function verifySession(token: string) {
     return null;
   }
 
-  const user = STATIC_USERS.find((candidate) => candidate.username === row.username);
-  if (!user || user.role !== row.role || user.displayName !== row.display_name) {
+  const userRow = await getAuthUser(row.username);
+  if (!userRow || userRow.role !== row.role || userRow.display_name !== row.display_name) {
     await cmsDb().prepare('DELETE FROM cms_sessions WHERE token_hash = ?').bind(tokenHash).run().catch(() => {});
     return null;
   }
 
-  return user;
+  return { username: userRow.username, displayName: userRow.display_name, role: userRow.role as CmsRole };
 }
 
 function cookieValue(request: Request, name: string) {
