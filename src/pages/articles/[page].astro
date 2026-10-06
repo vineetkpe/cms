@@ -1,17 +1,19 @@
 ---
+export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { getPublishedPosts } from '../../lib/posts';
-export async function getStaticPaths() {
-  const perPage = 18;
-  const posts = await getPublishedPosts();
-  const pages = Math.ceil(posts.length / perPage);
-  return Array.from({ length: Math.max(0, pages - 1) }, (_, index) => {
-    const page = index + 2;
-    return { params: { page: String(page) }, props: { page, pages, posts: posts.slice((page - 1) * perPage, page * perPage) } };
-  });
+
+const perPage = 18;
+const page = Number.parseInt(String(Astro.params.page || ''), 10);
+const allPosts = await getPublishedPosts();
+const pages = Math.max(1, Math.ceil(allPosts.length / perPage));
+
+if (!Number.isSafeInteger(page) || page < 2 || page > pages) {
+  return Astro.redirect('/404/');
 }
-const { page, pages, posts } = Astro.props;
+
+const posts = allPosts.slice((page - 1) * perPage, page * perPage);
 ---
 <BaseLayout title={`Articles – Page ${page}`} description={`Browse published articles, page ${page}.`}>
   <section class="hero"><div class="container hero-copy"><div class="kicker">Archive</div><h1>All articles</h1><p>Page {page} of {pages}.</p></div></section>
