@@ -8,15 +8,15 @@ const wordCount = String(post.body || '').trim().split(/\s+/).filter(Boolean).le
 const readTime = Math.max(1, Math.ceil(wordCount / 220));
 const hasImage = Boolean(post.data.featuredImage);
 ---
-<article class:list={['post-card', { featured, compact, 'has-image': hasImage, 'text-only': !hasImage }] }>
+<article class:list={['post-card', { featured, compact, 'has-image': hasImage, 'text-only': !hasImage }]}>
   {hasImage && (
     <a href={href} class="post-image-wrap" tabindex="-1" aria-hidden="true">
       <img
         class="post-image"
         src={post.data.featuredImage}
         alt={post.data.featuredImageAlt || post.data.title}
-        width="900"
-        height="506"
+        width="1200"
+        height="675"
         loading={featured ? 'eager' : 'lazy'}
         fetchpriority={featured ? 'high' : 'auto'}
         decoding="async"

@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getPublishedPosts } from '../lib/posts';
 
-export const prerender = true;
+export const prerender = false;
+
 export const GET: APIRoute = async () => {
   const posts = await getPublishedPosts();
   const data = posts.map((post) => ({
@@ -13,5 +14,10 @@ export const GET: APIRoute = async () => {
     date: post.data.pubDate.toISOString(),
     url: `/${post.id.replace(/\.md$/, '')}/`
   }));
-  return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
+  return new Response(JSON.stringify(data), {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=300'
+    }
+  });
 };

@@ -11,24 +11,27 @@ const posts = await getPublishedPosts();
 const featured = posts.find((post) => post.data.featured) || posts[0];
 const remaining = posts.filter((post) => post.id !== featured?.id);
 const secondary = remaining.slice(0, 2);
-const latest = remaining.slice(2, 11);
-const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 6);
+const latest = remaining.slice(2, 8);
+const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 8);
 const authorCount = new Set(posts.map((post) => post.data.author)).size;
+const topicCards = categoryNames.slice(0, 4).map((name) => ({
+  name,
+  count: posts.filter((post) => post.data.category === name).length,
+}));
 ---
 <BaseLayout title={site.name} description={site.description} siteSettings={site}>
-  <section class="blog-hero">
-    <div class="container blog-hero-inner">
-      <div class="hero-copy-block">
+  <section class="front-intro">
+    <div class="container front-intro-grid">
+      <div class="front-intro-copy">
         <div class="kicker">{site.homepageEyebrow || site.name}</div>
         <h1>{site.tagline}</h1>
         <p>{site.description}</p>
-        <div class="home-proof" aria-label="Publication summary">
-          <span><strong>{posts.length}</strong> published articles</span>
-          <span><strong>{categoryNames.length}</strong> active topics</span>
-          <span><strong>{authorCount}</strong> contributor{authorCount === 1 ? '' : 's'}</span>
-        </div>
       </div>
-      <a class="hero-archive-link" href="/articles/">Explore the archive <span aria-hidden="true">→</span></a>
+      <div class="front-facts" aria-label="Publication summary">
+        <div class="front-fact"><strong>{posts.length}</strong><span>published stories</span></div>
+        <div class="front-fact"><strong>{categoryNames.length}</strong><span>active topics</span></div>
+        <div class="front-fact"><strong>{authorCount}</strong><span>contributor{authorCount === 1 ? '' : 's'}</span></div>
+      </div>
     </div>
   </section>
 
@@ -41,19 +44,11 @@ const authorCount = new Set(posts.map((post) => post.data.author)).size;
     </nav>
   )}
 
-  <div class="editorial-band">
-    <div class="container editorial-band-inner">
-      <div class="editorial-band-item"><strong>Clear editorial hierarchy</strong><span>Focused pages built for readers first.</span></div>
-      <div class="editorial-band-item"><strong>Fast by default</strong><span>Static-first publishing with no external font dependency.</span></div>
-      <div class="editorial-band-item"><strong>Search-ready structure</strong><span>Canonical URLs, metadata, schema, archives and internal links.</span></div>
-    </div>
-  </div>
-
   <section class="section section-first" aria-labelledby="featured-heading">
     <div class="container">
       <div class="section-label-row">
-        <h2 id="featured-heading">Editor’s pick</h2>
-        <span>A strong starting point from the publication</span>
+        <h2 id="featured-heading">Featured</h2>
+        <span>Start with our latest recommended read</span>
       </div>
       {featured ? (
         <div class="lead-grid">
@@ -69,33 +64,32 @@ const authorCount = new Set(posts.map((post) => post.data.author)).size;
   </section>
 
   {latest.length > 0 && (
-    <section class="section latest-section" aria-labelledby="latest-heading">
+    <section class="section" aria-labelledby="latest-heading">
       <div class="container">
         <div class="section-head">
-          <div>
-            <div class="kicker">Recently published</div>
-            <h2 id="latest-heading">Latest articles</h2>
-          </div>
-          <a href="/articles/">View full archive <span aria-hidden="true">→</span></a>
+          <div><div class="kicker">Fresh from the desk</div><h2 id="latest-heading">Latest stories</h2></div>
+          <a href="/articles/">View all articles →</a>
         </div>
         <div class="latest-grid">{latest.map((post) => <PostCard post={post} />)}</div>
       </div>
     </section>
   )}
 
-  {categoryNames.slice(0, 4).map((name) => {
-    const categoryPosts = posts.filter((post) => post.data.category === name).slice(0, 4);
-    if (categoryPosts.length < 2) return null;
-    return (
-      <section class="section category-strip">
-        <div class="container">
-          <div class="section-head">
-            <div><div class="kicker">Topic</div><h2>{name}</h2></div>
-            <a href={`/category/${slugify(name)}/`}>Explore {name} <span aria-hidden="true">→</span></a>
-          </div>
-          <div class="category-grid">{categoryPosts.map((post) => <PostCard post={post} compact={true} />)}</div>
+  {topicCards.length > 0 && (
+    <section class="section" aria-labelledby="topics-heading">
+      <div class="container">
+        <div class="section-head">
+          <div><div class="kicker">Browse</div><h2 id="topics-heading">Explore by topic</h2></div>
         </div>
-      </section>
-    );
-  })}
+        <div class="topic-grid">
+          {topicCards.map((item) => (
+            <a class="topic-card" href={`/category/${slugify(item.name)}/`}>
+              <strong>{item.name}</strong>
+              <span>{item.count} article{item.count === 1 ? '' : 's'} →</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
 </BaseLayout>
