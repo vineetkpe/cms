@@ -4,9 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/generate-redirects.mjs",
     "dev": "astro dev",
-    "prebuild": "node scripts/generate-redirects.mjs",
     "build": "astro build",
     "preview": "astro build && wrangler dev",
     "deploy": "astro build && wrangler deploy",
@@ -18,7 +16,6 @@
     "@astrojs/rss": "^4.0.19",
     "@toast-ui/editor": "^3.2.2",
     "astro": "^7.3.5",
-    "jose": "^6.2.12",
     "marked": "^16.4.1",
     "rehype-sanitize": "^6.0.0"
   },
