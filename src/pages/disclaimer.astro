@@ -1,5 +1,7 @@
 ---
 import ManagedPage from '../components/ManagedPage.astro';
-import pages from '../data/pages.json';
+import { getManagedPage } from '../lib/managed-pages';
+export const prerender = false;
+const page = await getManagedPage('disclaimer');
 ---
-<ManagedPage page={pages.disclaimer} />
+<ManagedPage page={page} />

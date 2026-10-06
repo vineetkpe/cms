@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getPublishedPosts, slugify } from '../lib/posts';
 import { getSiteSettings } from '../lib/site-settings';
-import pages from '../data/pages.json';
+import { getManagedPages } from '../lib/managed-pages';
 
 export const prerender = false;
 type Entry = { loc: string; lastmod?: string };
@@ -13,16 +13,16 @@ const managedPaths = [
   ['terms', '/terms/'],
   ['disclaimer', '/disclaimer/'],
 ] as const;
-const staticPaths = [
-  '/', '/categories/', '/tags/', '/authors/', '/articles/',
-  ...managedPaths.filter(([key]) => !(pages as any)[key]?.noindex).map(([, path]) => path),
-];
+const baseStaticPaths = ['/', '/categories/', '/tags/', '/authors/', '/articles/'];
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const perPage = 18;
 
 export const GET: APIRoute = async () => {
-  const site = await getSiteSettings();
-  const posts = await getPublishedPosts();
+  const [site, posts, pages] = await Promise.all([getSiteSettings(), getPublishedPosts(), getManagedPages()]);
+  const staticPaths = [
+    ...baseStaticPaths,
+    ...managedPaths.filter(([key]) => !(pages as any)[key]?.noindex).map(([, path]) => path),
+  ];
   const categories = [...new Set(posts.map((post) => post.data.category))];
   const tags = [...new Set(posts.flatMap((post) => post.data.tags))];
   const authors = [...new Set(posts.map((post) => post.data.author))];

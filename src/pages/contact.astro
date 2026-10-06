@@ -1,9 +1,12 @@
 ---
 import ManagedPage from '../components/ManagedPage.astro';
-import pages from '../data/pages.json';
-import site from '../data/site.json';
+import { getManagedPage } from '../lib/managed-pages';
+import { getSiteSettings } from '../lib/site-settings';
+
+export const prerender = false;
+const [page, site] = await Promise.all([getManagedPage('contact'), getSiteSettings()]);
 ---
-<ManagedPage page={pages.contact}>
+<ManagedPage page={page}>
   <section class="contact-card" aria-labelledby="contact-email-title">
     <div class="kicker">Direct contact</div>
     <h2 id="contact-email-title">Email the publication</h2>
