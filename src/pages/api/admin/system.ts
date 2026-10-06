@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { listDirectory } from '../../../lib/github';
 
 export const prerender = false;
 
@@ -19,53 +18,29 @@ export const GET: APIRoute = async ({ request }) => {
       const row = await e.DB.prepare(`SELECT
         (SELECT COUNT(*) FROM cms_posts) AS posts,
         (SELECT COUNT(*) FROM cms_pages) AS pages,
-        (SELECT COUNT(*) FROM cms_templates) AS templates`).first();
+        (SELECT COUNT(*) FROM cms_templates) AS templates,
+        (SELECT COUNT(*) FROM cms_media) AS media`).first();
       checks.push({
         key: 'd1',
-        label: 'D1 content database',
+        label: 'D1 database',
         status: 'ok',
-        detail: `Connected · ${Number(row?.posts || 0)} posts · ${Number(row?.pages || 0)} pages · ${Number(row?.templates || 0)} templates.`,
+        detail: `Connected · ${Number(row?.posts || 0)} posts · ${Number(row?.pages || 0)} pages · ${Number(row?.templates || 0)} templates · ${Number(row?.media || 0)} media records.`,
       });
     } catch {
-      checks.push({ key: 'd1', label: 'D1 content database', status: 'error', detail: 'D1 is bound, but the CMS tables check failed.' });
+      checks.push({ key: 'd1', label: 'D1 database', status: 'error', detail: 'D1 is bound, but the CMS tables check failed.' });
     }
   } else {
-    checks.push({ key: 'd1', label: 'D1 content database', status: 'error', detail: 'DB binding is missing.' });
+    checks.push({ key: 'd1', label: 'D1 database', status: 'error', detail: 'DB binding is missing.' });
   }
 
   checks.push({
-    key: 'kv',
-    label: 'KV cache',
-    status: e.CMS_KV ? 'ok' : 'warning',
-    detail: e.CMS_KV ? 'CMS_KV binding is connected.' : 'CMS_KV binding is missing.',
+    key: 'media',
+    label: 'Free media storage',
+    status: e.CMS_KV ? 'ok' : 'error',
+    detail: e.CMS_KV
+      ? 'Cloudflare KV media storage is connected with a 500 MB CMS safety cap.'
+      : 'CMS_KV binding is missing, so media uploads are unavailable.',
   });
-
-  const hasGithubToken = Boolean(String(e.CMS_GITHUB_TOKEN || '').trim());
-  if (!hasGithubToken) {
-    checks.push({
-      key: 'media',
-      label: 'Temporary media storage',
-      status: 'warning',
-      detail: 'Publishing works without GitHub. Media uploads remain unavailable until the temporary GitHub token is restored or R2 is enabled.',
-    });
-  } else {
-    try {
-      await listDirectory('public/uploads');
-      checks.push({
-        key: 'media',
-        label: 'Temporary media storage',
-        status: 'ok',
-        detail: 'GitHub-backed media is reachable. This will be replaced by R2 later.',
-      });
-    } catch {
-      checks.push({
-        key: 'media',
-        label: 'Temporary media storage',
-        status: 'warning',
-        detail: 'Publishing is unaffected, but the temporary GitHub-backed media library could not be reached.',
-      });
-    }
-  }
 
   checks.push({
     key: 'workers-ai',
@@ -92,7 +67,7 @@ export const GET: APIRoute = async ({ request }) => {
     key: 'scheduler',
     label: 'Scheduled publishing',
     status: e.DB ? 'ok' : 'error',
-    detail: e.DB ? 'Worker cron and D1 publishing are configured; GitHub is not required.' : 'Scheduled publishing requires the D1 binding.',
+    detail: e.DB ? 'Worker cron and D1 publishing are configured; GitHub is not required.' : 'Scheduled publishing requires D1.',
   });
 
   checks.push({
@@ -103,6 +78,6 @@ export const GET: APIRoute = async ({ request }) => {
   });
 
   return Response.json({ checks, generatedAt: new Date().toISOString() }, {
-    headers: { 'Cache-Control': 'no-store' }
+    headers: { 'Cache-Control': 'no-store' },
   });
 };

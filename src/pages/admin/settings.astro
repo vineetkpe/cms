@@ -42,12 +42,6 @@ export const prerender = true;
       <div class="grid"><div class="field"><label>Google Analytics ID</label><input id="googleAnalyticsId" placeholder="G-XXXXXXXX"></div><div class="field"><label>Search Console verification</label><input id="googleSiteVerification"></div></div>
       <div class="grid"><div class="field"><label>AdSense publisher</label><input id="adsensePublisherId" placeholder="ca-pub-..."></div><div class="field"><label>Article ad slot</label><input id="adsenseArticleSlot"></div></div>
       <div class="field"><label>Sidebar ad slot</label><input id="adsenseSidebarSlot"></div>
-      <div class="integration">
-        <strong>Temporary media storage</strong>
-        <div class="hint">Publishing now uses D1 and does not require GitHub. Until R2 is enabled, only media uploads still use the temporary <code>CMS_GITHUB_TOKEN</code> secret.</div>
-        <div class="grid" style="margin-top:14px"><div class="field"><label>Token expiry date</label><input id="githubTokenExpiresAt" type="date"><div class="hint">Optional expiry reminder for the temporary media token while R2 is deferred.</div></div><div><div class="hint">Status</div><div id="githubTokenStatus" class="statusline">No expiry date set.</div></div></div>
-        <div class="actions"><a class="button" href="https://dash.cloudflare.com/" target="_blank" rel="noopener">Open Cloudflare secrets ↗</a></div>
-      </div>
     </section>
 
     <section class="panel"><h2>Trend intelligence</h2><p>Controls the Google Trends feed and AI topic recommendations shown on your dashboard.</p>
@@ -70,25 +64,12 @@ export const prerender = true;
   let settings = {}, sha = '';
   function msg(text, ok = true) { const el = $('msg'); el.textContent = text; el.className = `msg show ${ok ? 'ok' : 'err'}`; setTimeout(() => el.classList.remove('show'), 5000); }
   async function api(url, opt = {}) { const r = await fetch(url, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...opt }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Request failed'); return d; }
-  function updateGithubTokenStatus() {
-    const raw = $('githubTokenExpiresAt').value;
-    const el = $('githubTokenStatus');
-    if (!raw) { el.textContent = 'No expiry date set.'; el.className = 'statusline warn'; return; }
-    const expiry = new Date(`${raw}T23:59:59Z`).getTime();
-    const days = Math.ceil((expiry - Date.now()) / 86400000);
-    if (days < 0) { el.textContent = `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} ago — replace CMS_GITHUB_TOKEN now.`; el.className = 'statusline danger'; }
-    else if (days === 0) { el.textContent = 'Expires today — replace CMS_GITHUB_TOKEN now.'; el.className = 'statusline danger'; }
-    else if (days <= 7) { el.textContent = `Expires in ${days} days — renew now.`; el.className = 'statusline danger'; }
-    else if (days <= 30) { el.textContent = `Expires in ${days} days — plan renewal.`; el.className = 'statusline warn'; }
-    else { el.textContent = `${days} days remaining.`; el.className = 'statusline ok'; }
-  }
   function fill() {
     const t = settings.theme || {}, s = settings.social || {};
     $('name').value = settings.name || ''; $('logoText').value = settings.logoText || ''; $('logoUrl').value = settings.logoUrl || ''; $('homepageEyebrow').value = settings.homepageEyebrow || ''; $('tagline').value = settings.tagline || ''; $('description').value = settings.description || '';
     $('primaryColor').value = settings.primaryColor || '#1769e0'; $('surfaceColor').value = t.surfaceColor || '#f6f6f3'; $('radius').value = t.radius ?? 14; $('maxWidth').value = t.maxWidth ?? 1240;
     $('navigation').value = (settings.navigation || []).map((i) => `${i.label}|${i.href}`).join('\n'); $('footerText').value = settings.footerText || ''; $('email').value = settings.email || ''; $('author').value = settings.author || '';
     $('url').value = settings.url || ''; $('language').value = settings.language || 'en'; $('defaultOgImage').value = settings.defaultOgImage || ''; $('googleAnalyticsId').value = settings.googleAnalyticsId || ''; $('googleSiteVerification').value = settings.googleSiteVerification || ''; $('adsensePublisherId').value = settings.adsensePublisherId || ''; $('adsenseArticleSlot').value = settings.adsenseArticleSlot || ''; $('adsenseSidebarSlot').value = settings.adsenseSidebarSlot || '';
-    $('githubTokenExpiresAt').value = settings.githubTokenExpiresAt || ''; updateGithubTokenStatus();
     $('contentNiche').value = settings.contentNiche || ''; $('trendGeo').value = settings.trendGeo || 'IN'; $('trendKeywords').value = Array.isArray(settings.trendKeywords) ? settings.trendKeywords.join(', ') : '';
     $('socialX').value = s.x || ''; $('socialLinkedin').value = s.linkedin || ''; $('socialInstagram').value = s.instagram || ''; $('socialYoutube').value = s.youtube || '';
   }
@@ -99,12 +80,10 @@ export const prerender = true;
       navigation: $('navigation').value.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => { const i = line.indexOf('|'); return i > 0 ? { label: line.slice(0, i).trim(), href: line.slice(i + 1).trim() } : { label: line, href: '/' }; }),
       footerText: $('footerText').value, email: $('email').value, author: $('author').value, url: $('url').value, language: $('language').value, defaultOgImage: $('defaultOgImage').value,
       googleAnalyticsId: $('googleAnalyticsId').value, googleSiteVerification: $('googleSiteVerification').value, adsensePublisherId: $('adsensePublisherId').value, adsenseArticleSlot: $('adsenseArticleSlot').value, adsenseSidebarSlot: $('adsenseSidebarSlot').value,
-      githubTokenExpiresAt: $('githubTokenExpiresAt').value,
       contentNiche: $('contentNiche').value, trendGeo: $('trendGeo').value, trendKeywords: $('trendKeywords').value.split(',').map((x) => x.trim()).filter(Boolean),
       social: { x: $('socialX').value, linkedin: $('socialLinkedin').value, instagram: $('socialInstagram').value, youtube: $('socialYoutube').value }
     };
   }
-  $('githubTokenExpiresAt').addEventListener('change', updateGithubTokenStatus);
   $('form').addEventListener('submit', async (event) => { event.preventDefault(); capture(); try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ settings, sha }) }); msg('Settings saved to D1.'); const d = await api('/api/admin/settings'); settings = d.settings; sha = d.sha; fill(); } catch (error) { msg(error instanceof Error ? error.message : 'Unable to save settings.', false); } });
   api('/api/admin/settings').then((d) => { settings = d.settings; sha = d.sha; fill(); }).catch((error) => msg(error instanceof Error ? error.message : 'Unable to load settings.', false));
 </script>

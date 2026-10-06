@@ -1,12 +1,5 @@
 # Local development only. Never commit real production secrets.
 DEV_ADMIN_BYPASS=false
 
-# Temporary: required only by the current GitHub-backed media library.
-# CMS publishing, pages, settings, redirects, templates and revisions use D1.
-# Remove these after R2 is enabled and the prepared media migration is deployed.
-CMS_GITHUB_TOKEN=github_fine_grained_token_here
-CMS_GITHUB_REPO=vineetkpe/cms
-CMS_GITHUB_BRANCH=main
-
 # Optional provider key. Workers AI is the fallback when this is absent.
 # GEMINI_API_KEY=
