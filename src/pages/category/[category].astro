@@ -1,19 +1,22 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import { getPublishedPosts, slugify } from '../../lib/posts';
+import { getPublishedPostsByCategory, slugify } from '../../lib/posts';
 
 export const prerender = false;
-
 const builtIns = ['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
 const categorySlug = String(Astro.params.category || '');
-const allPosts = await getPublishedPosts();
-const posts = allPosts.filter((post) => slugify(post.data.category) === categorySlug);
+const perPage = 24;
+const requested = Number.parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const page = Number.isSafeInteger(requested) && requested > 0 ? requested : 1;
+const { posts, total } = await getPublishedPostsByCategory(categorySlug, perPage, (page - 1) * perPage);
 const builtInName = builtIns.find((name) => slugify(name) === categorySlug);
 const name = posts[0]?.data.category || builtInName;
 if (!name) return Astro.redirect('/404/');
+const pages = Math.max(1, Math.ceil(total / perPage));
+if (page > pages && total > 0) return Astro.redirect(`/category/${categorySlug}/`);
 ---
 <BaseLayout title={name} description={`Latest ${name} and important updates.`}>
-  <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Category</div><h1>{name}</h1><p>Latest {name.toLowerCase()} published by the editorial team.</p></div><div class="archive-summary"><div><strong>{posts.length}</strong><span>published updates</span></div><div><strong>Newest first</strong><span>archive order</span></div></div></div></section>
-  <section class="section"><div class="container">{posts.length ? <div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div> : <div class="empty-state"><strong>No {name.toLowerCase()} yet.</strong><p>This category is ready. New posts assigned to it will appear here automatically.</p><a href="/articles/">Browse all published updates →</a></div>}</div></section>
+  <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Category</div><h1>{name}</h1><p>Latest {name.toLowerCase()} published by the editorial team.</p></div><div class="archive-summary"><div><strong>{total}</strong><span>published updates</span></div><div><strong>{page > 1 ? `Page ${page}` : 'Newest first'}</strong><span>archive order</span></div></div></div></section>
+  <section class="section"><div class="container">{posts.length ? <><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination" aria-label="Category pagination">{page > 1 ? <a href={page === 2 ? `/category/${categorySlug}/` : `/category/${categorySlug}/?page=${page - 1}`}>← Previous</a> : <span></span>}<span>Page {page} of {pages}</span>{page < pages ? <a href={`/category/${categorySlug}/?page=${page + 1}`}>Next →</a> : <span></span>}</nav>}</> : <div class="empty-state"><strong>No {name.toLowerCase()} yet.</strong><p>This category is ready. New posts assigned to it will appear here automatically.</p><a href="/articles/">Browse all published updates →</a></div>}</div></section>
 </BaseLayout>

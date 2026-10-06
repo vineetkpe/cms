@@ -1,12 +1,10 @@
 ---
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getPublishedPosts, slugify } from '../lib/posts';
-const posts = await getPublishedPosts();
-const names = [...new Set(posts.flatMap((post) => post.data.tags as string[]))] as string[];
-const tags = names.map((name) => ({ name, count: posts.filter((post) => post.data.tags.some((tag: string) => slugify(tag) === slugify(name))).length })).sort((a,b) => b.count-a.count || a.name.localeCompare(b.name));
+import { getPublishedTagCounts } from '../lib/posts';
+const tags=(await getPublishedTagCounts()).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
 ---
 <BaseLayout title="Tags" description="Browse all article tags.">
   <section class="hero"><div class="container hero-copy"><div class="kicker">Explore</div><h1>Tags</h1><p>Find articles by specific subject.</p></div></section>
-  <section class="section"><div class="container tag-cloud">{tags.map((item) => <a href={`/tag/${slugify(item.name)}/`}>{item.name} <span>{item.count}</span></a>)}</div></section>
+  <section class="section"><div class="container tag-cloud">{tags.map((item) => <a href={`/tag/${item.slug}/`}>{item.name} <span>{item.count}</span></a>)}</div></section>
 </BaseLayout>

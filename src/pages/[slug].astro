@@ -4,7 +4,7 @@ import { marked } from 'marked';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import AdSlot from '../components/AdSlot.astro';
-import { getPublishedPostBySlug, getPublishedPosts, getRelatedPosts, slugify } from '../lib/posts';
+import { getPublishedPostBySlug, getRelatedPublishedPosts, slugify } from '../lib/posts';
 import { getSiteSettings } from '../lib/site-settings';
 
 export const prerender = false;
@@ -47,8 +47,7 @@ if (post.__d1) {
   headings = rendered.headings;
 }
 
-const allPosts = await getPublishedPosts();
-const related = getRelatedPosts(post, allPosts, 3);
+const related = await getRelatedPublishedPosts(post, 3);
 const categorySlug = slugify(post.data.category);
 const authorSlug = slugify(post.data.author);
 const canonical = post.data.canonical || new URL(`/${slug}/`, site.url).toString();

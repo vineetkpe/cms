@@ -27,21 +27,53 @@ type PostRow = {
   status: CmsPostStatus;
 };
 
+export type TaxonomyCount = {
+  name: string;
+  slug: string;
+  count: number;
+  latest?: string;
+};
+
 function db(): D1Binding {
   const binding = (env as any).DB as D1Binding | undefined;
   if (!binding) throw new Error('DB is not configured.');
   return binding;
 }
 
-export function getPostStatus(post: AdminPost, now = Date.now()): CmsPostStatus {
-  if (post.draft) return 'draft';
-  const publishAt = post.publishAt ? Date.parse(post.publishAt) : Date.parse(`${post.pubDate}T00:00:00Z`);
-  return Number.isFinite(publishAt) && publishAt > now ? 'scheduled' : 'published';
+function indexSlug(value: string) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90);
+}
+
+function sortAt(post: AdminPost) {
+  if (post.publishAt) return post.publishAt;
+  const value = String(post.pubDate || '');
+  return value.includes('T') ? value : `${value}T00:00:00.000Z`;
 }
 
 function parseRow(row: PostRow): AdminPost {
   const post = JSON.parse(row.payload_json) as AdminPost;
   return { ...post, slug: row.slug, draft: row.status === 'draft', sha: undefined };
+}
+
+function safeLimit(value: number, fallback = 18, max = 100) {
+  const n = Number.isFinite(value) ? Math.round(value) : fallback;
+  return Math.max(1, Math.min(max, n));
+}
+
+function safeOffset(value: number) {
+  const n = Number.isFinite(value) ? Math.round(value) : 0;
+  return Math.max(0, n);
+}
+
+export function getPostStatus(post: AdminPost, now = Date.now()): CmsPostStatus {
+  if (post.draft) return 'draft';
+  const publishAt = post.publishAt ? Date.parse(post.publishAt) : Date.parse(`${post.pubDate}T00:00:00Z`);
+  return Number.isFinite(publishAt) && publishAt > now ? 'scheduled' : 'published';
 }
 
 export async function listDbPosts(): Promise<AdminPost[]> {
@@ -59,13 +91,194 @@ export async function getDbPost(slug: string): Promise<AdminPost | null> {
   return row ? parseRow(row) : null;
 }
 
+export async function listPublishedDbPosts(limit = 18, offset = 0): Promise<AdminPost[]> {
+  const result = await db()
+    .prepare(`SELECT slug, payload_json, status
+      FROM cms_posts
+      WHERE status = 'published'
+      ORDER BY sort_at DESC, updated_at DESC
+      LIMIT ? OFFSET ?`)
+    .bind(safeLimit(limit), safeOffset(offset))
+    .all<PostRow>();
+  return (result.results || []).map(parseRow);
+}
+
+export async function countPublishedDbPosts(): Promise<number> {
+  const row = await db()
+    .prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published'")
+    .first<{ count: number }>();
+  return Number(row?.count || 0);
+}
+
+export async function getFeaturedDbPost(): Promise<AdminPost | null> {
+  const row = await db()
+    .prepare(`SELECT slug, payload_json, status
+      FROM cms_posts
+      WHERE status = 'published' AND featured = 1
+      ORDER BY sort_at DESC, updated_at DESC
+      LIMIT 1`)
+    .first<PostRow>();
+  return row ? parseRow(row) : null;
+}
+
+export async function listPublishedDbPostsByCategory(categorySlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
+  const result = await db()
+    .prepare(`SELECT slug, payload_json, status
+      FROM cms_posts
+      WHERE status = 'published' AND category_slug = ?
+      ORDER BY sort_at DESC, updated_at DESC
+      LIMIT ? OFFSET ?`)
+    .bind(categorySlug, safeLimit(limit, 24), safeOffset(offset))
+    .all<PostRow>();
+  return (result.results || []).map(parseRow);
+}
+
+export async function countPublishedDbPostsByCategory(categorySlug: string): Promise<number> {
+  const row = await db()
+    .prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published' AND category_slug = ?")
+    .bind(categorySlug)
+    .first<{ count: number }>();
+  return Number(row?.count || 0);
+}
+
+export async function listPublishedDbPostsByAuthor(authorSlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
+  const result = await db()
+    .prepare(`SELECT slug, payload_json, status
+      FROM cms_posts
+      WHERE status = 'published' AND author_slug = ?
+      ORDER BY sort_at DESC, updated_at DESC
+      LIMIT ? OFFSET ?`)
+    .bind(authorSlug, safeLimit(limit, 24), safeOffset(offset))
+    .all<PostRow>();
+  return (result.results || []).map(parseRow);
+}
+
+export async function countPublishedDbPostsByAuthor(authorSlug: string): Promise<number> {
+  const row = await db()
+    .prepare("SELECT COUNT(*) AS count FROM cms_posts WHERE status = 'published' AND author_slug = ?")
+    .bind(authorSlug)
+    .first<{ count: number }>();
+  return Number(row?.count || 0);
+}
+
+export async function listPublishedDbPostsByTag(tagSlug: string, limit = 24, offset = 0): Promise<AdminPost[]> {
+  const result = await db()
+    .prepare(`SELECT p.slug, p.payload_json, p.status
+      FROM cms_post_tags t INDEXED BY idx_cms_post_tags_tag
+      JOIN cms_posts p ON p.slug = t.post_slug
+      WHERE t.tag_slug = ? AND p.status = 'published'
+      ORDER BY p.sort_at DESC, p.updated_at DESC
+      LIMIT ? OFFSET ?`)
+    .bind(tagSlug, safeLimit(limit, 24), safeOffset(offset))
+    .all<PostRow>();
+  return (result.results || []).map(parseRow);
+}
+
+export async function countPublishedDbPostsByTag(tagSlug: string): Promise<number> {
+  const row = await db()
+    .prepare(`SELECT COUNT(*) AS count
+      FROM cms_post_tags t INDEXED BY idx_cms_post_tags_tag
+      JOIN cms_posts p ON p.slug = t.post_slug
+      WHERE t.tag_slug = ? AND p.status = 'published'`)
+    .bind(tagSlug)
+    .first<{ count: number }>();
+  return Number(row?.count || 0);
+}
+
+export async function listPublishedDbCategories(): Promise<TaxonomyCount[]> {
+  const result = await db()
+    .prepare(`SELECT category AS name, category_slug AS slug, COUNT(*) AS count, MAX(sort_at) AS latest
+      FROM cms_posts
+      WHERE status = 'published' AND category_slug IS NOT NULL AND category_slug <> ''
+      GROUP BY category_slug, category
+      ORDER BY count DESC, name ASC`)
+    .all<{ name: string; slug: string; count: number; latest: string }>();
+  return (result.results || []).map((row) => ({ ...row, count: Number(row.count || 0) }));
+}
+
+export async function listPublishedDbAuthors(): Promise<TaxonomyCount[]> {
+  const result = await db()
+    .prepare(`SELECT author AS name, author_slug AS slug, COUNT(*) AS count, MAX(sort_at) AS latest
+      FROM cms_posts
+      WHERE status = 'published' AND author_slug IS NOT NULL AND author_slug <> ''
+      GROUP BY author_slug, author
+      ORDER BY count DESC, name ASC`)
+    .all<{ name: string; slug: string; count: number; latest: string }>();
+  return (result.results || []).map((row) => ({ ...row, count: Number(row.count || 0) }));
+}
+
+export async function listPublishedDbTags(): Promise<TaxonomyCount[]> {
+  const result = await db()
+    .prepare(`SELECT t.tag AS name, t.tag_slug AS slug, COUNT(*) AS count, MAX(p.sort_at) AS latest
+      FROM cms_post_tags t
+      JOIN cms_posts p ON p.slug = t.post_slug
+      WHERE p.status = 'published'
+      GROUP BY t.tag_slug, t.tag
+      ORDER BY count DESC, name ASC`)
+    .all<{ name: string; slug: string; count: number; latest: string }>();
+  return (result.results || []).map((row) => ({ ...row, count: Number(row.count || 0) }));
+}
+
+export async function getRelatedDbPosts(post: AdminPost, limit = 3): Promise<AdminPost[]> {
+  const wanted = safeLimit(limit, 3, 8);
+  const seen = new Map<string, AdminPost>();
+  const currentSlug = post.slug;
+
+  if (post.category) {
+    const categoryRows = await db()
+      .prepare(`SELECT slug, payload_json, status
+        FROM cms_posts
+        WHERE status = 'published' AND category_slug = ? AND slug <> ?
+        ORDER BY sort_at DESC, updated_at DESC
+        LIMIT ?`)
+      .bind(indexSlug(post.category), currentSlug, Math.max(wanted * 2, 6))
+      .all<PostRow>();
+    for (const row of categoryRows.results || []) seen.set(row.slug, parseRow(row));
+  }
+
+  const tagSlugs = [...new Set((post.tags || []).map(indexSlug).filter(Boolean))].slice(0, 8);
+  if (seen.size < wanted && tagSlugs.length) {
+    const placeholders = tagSlugs.map(() => '?').join(',');
+    const tagRows = await db()
+      .prepare(`SELECT DISTINCT p.slug, p.payload_json, p.status
+        FROM cms_post_tags t INDEXED BY idx_cms_post_tags_tag
+        JOIN cms_posts p ON p.slug = t.post_slug
+        WHERE p.status = 'published' AND p.slug <> ? AND t.tag_slug IN (${placeholders})
+        ORDER BY p.sort_at DESC, p.updated_at DESC
+        LIMIT ?`)
+      .bind(currentSlug, ...tagSlugs, Math.max(wanted * 2, 6))
+      .all<PostRow>();
+    for (const row of tagRows.results || []) if (!seen.has(row.slug)) seen.set(row.slug, parseRow(row));
+  }
+
+  if (seen.size < wanted) {
+    const latest = await db()
+      .prepare(`SELECT slug, payload_json, status
+        FROM cms_posts
+        WHERE status = 'published' AND slug <> ?
+        ORDER BY sort_at DESC, updated_at DESC
+        LIMIT ?`)
+      .bind(currentSlug, wanted)
+      .all<PostRow>();
+    for (const row of latest.results || []) if (!seen.has(row.slug)) seen.set(row.slug, parseRow(row));
+  }
+
+  return [...seen.values()].slice(0, wanted);
+}
+
 export async function saveDbPost(post: AdminPost) {
   const status = getPostStatus(post);
   const now = Math.floor(Date.now() / 1000);
   const payload = JSON.stringify({ ...post, draft: status === 'draft', sha: undefined });
+  const category = String(post.category || '').trim();
+  const categorySlug = indexSlug(category);
+  const authorSlug = indexSlug(post.author || '');
+  const featured = post.featured ? 1 : 0;
+  const publishedSort = sortAt(post);
+
   await db().prepare(`INSERT INTO cms_posts
-    (slug, title, author, status, pub_date, publish_at, payload_json, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (slug, title, author, status, pub_date, publish_at, payload_json, created_at, updated_at, category, category_slug, author_slug, featured, sort_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(slug) DO UPDATE SET
       title = excluded.title,
       author = excluded.author,
@@ -73,21 +286,38 @@ export async function saveDbPost(post: AdminPost) {
       pub_date = excluded.pub_date,
       publish_at = excluded.publish_at,
       payload_json = excluded.payload_json,
-      updated_at = excluded.updated_at`)
-    .bind(post.slug, post.title, post.author, status, post.pubDate, post.publishAt || null, payload, now, now)
+      updated_at = excluded.updated_at,
+      category = excluded.category,
+      category_slug = excluded.category_slug,
+      author_slug = excluded.author_slug,
+      featured = excluded.featured,
+      sort_at = excluded.sort_at`)
+    .bind(post.slug, post.title, post.author, status, post.pubDate, post.publishAt || null, payload, now, now, category, categorySlug, authorSlug, featured, publishedSort)
     .run();
+
+  await db().prepare('DELETE FROM cms_post_tags WHERE post_slug = ?').bind(post.slug).run();
+  for (const tag of [...new Set(post.tags || [])].slice(0, 30)) {
+    const tagSlug = indexSlug(tag);
+    if (!tagSlug) continue;
+    await db().prepare('INSERT OR IGNORE INTO cms_post_tags (post_slug, tag, tag_slug) VALUES (?, ?, ?)')
+      .bind(post.slug, String(tag), tagSlug)
+      .run();
+  }
+
   return status;
 }
 
 export async function deleteDbPost(slug: string) {
   const existing = await getDbPost(slug);
   if (!existing) return false;
+  await db().prepare('DELETE FROM cms_post_tags WHERE post_slug = ?').bind(slug).run();
   await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(slug).run();
   return true;
 }
 
 export async function moveDbPost(oldSlug: string, post: AdminPost) {
   if (oldSlug && oldSlug !== post.slug) {
+    await db().prepare('DELETE FROM cms_post_tags WHERE post_slug = ?').bind(oldSlug).run();
     await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(oldSlug).run();
   }
   return saveDbPost(post);
@@ -126,14 +356,14 @@ export async function saveDbRevision(slug: string, post: AdminPost, savedBy: str
 }
 
 export async function listDbRevisions(slug: string, limit = 30) {
-  const safeLimit = Math.max(1, Math.min(50, Math.round(limit || 30)));
+  const safe = Math.max(1, Math.min(50, Math.round(limit || 30)));
   const result = await db()
     .prepare(`SELECT id, slug, saved_at, saved_by, status, payload_json
       FROM cms_post_revisions
       WHERE slug = ?
       ORDER BY saved_at DESC, id DESC
       LIMIT ?`)
-    .bind(slug, safeLimit)
+    .bind(slug, safe)
     .all<RevisionRow>();
 
   return (result.results || []).map((row) => ({

@@ -1,26 +1,20 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import { getPublishedPosts, slugify } from '../../lib/posts';
+import { getPublishedPostsByAuthor } from '../../lib/posts';
 
 export const prerender = false;
-
 const authorSlug = String(Astro.params.author || '');
-const allPosts = await getPublishedPosts();
-const posts = allPosts.filter((post) => slugify(post.data.author) === authorSlug);
+const perPage = 24;
+const requested = Number.parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const page = Number.isSafeInteger(requested) && requested > 0 ? requested : 1;
+const { posts, total } = await getPublishedPostsByAuthor(authorSlug, perPage, (page - 1) * perPage);
 if (!posts.length) return Astro.redirect('/404/');
 const name = posts[0].data.author;
+const pages = Math.max(1, Math.ceil(total / perPage));
 const schema = { '@context': 'https://schema.org', '@type': 'Person', name };
 ---
 <BaseLayout title={name} description={`Articles written by ${name}.`} schema={schema}>
-  <section class="hero">
-    <div class="container hero-copy">
-      <div class="kicker">Author</div>
-      <h1>{name}</h1>
-      <p>{posts.length} published article{posts.length === 1 ? '' : 's'}.</p>
-    </div>
-  </section>
-  <section class="section">
-    <div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div></div>
-  </section>
+  <section class="hero"><div class="container hero-copy"><div class="kicker">Author</div><h1>{name}</h1><p>{total} published article{total === 1 ? '' : 's'}.</p></div></section>
+  <section class="section"><div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination">{page > 1 ? <a href={page === 2 ? `/author/${authorSlug}/` : `/author/${authorSlug}/?page=${page - 1}`}>← Previous</a> : <span></span>}<span>Page {page} of {pages}</span>{page < pages ? <a href={`/author/${authorSlug}/?page=${page + 1}`}>Next →</a> : <span></span>}</nav>}</div></section>
 </BaseLayout>

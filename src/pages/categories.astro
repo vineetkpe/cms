@@ -1,14 +1,15 @@
 ---
 export const prerender = false;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getPublishedPosts, slugify } from '../lib/posts';
-const posts = await getPublishedPosts();
+import { getPublishedCategoryCounts, slugify } from '../lib/posts';
 const builtIns=['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
-const custom=[...new Set(posts.map((p)=>p.data.category).filter((name)=>!builtIns.includes(name)))];
-const names=[...builtIns,...custom];
-const categories=names.map((name)=>({name,count:posts.filter((post)=>post.data.category===name).length}));
+const counts=await getPublishedCategoryCounts();
+const map=new Map(counts.map((item)=>[item.slug,item]));
+const custom=counts.filter((item)=>!builtIns.some((name)=>slugify(name)===item.slug));
+const categories=[...builtIns.map((name)=>({name,slug:slugify(name),count:map.get(slugify(name))?.count||0})),...custom.map((item)=>({name:item.name,slug:item.slug,count:item.count}))];
+const total=counts.reduce((sum,item)=>sum+item.count,0);
 ---
 <BaseLayout title="Categories" description="Browse job, exam, result, scholarship and scheme updates by category.">
-  <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Explore</div><h1>Categories</h1><p>Find updates by the type of information you need.</p></div><div class="archive-summary"><div><strong>{categories.length}</strong><span>categories</span></div><div><strong>{posts.length}</strong><span>published updates</span></div></div></div></section>
-  <section class="section"><div class="container taxonomy-grid">{categories.map((item)=><a class="taxonomy-card" href={`/category/${slugify(item.name)}/`}><strong>{item.name}</strong><span>{item.count} update{item.count===1?'':'s'} →</span></a>)}</div></section>
+  <section class="archive-hero"><div class="container archive-hero-grid"><div><div class="kicker">Explore</div><h1>Categories</h1><p>Find updates by the type of information you need.</p></div><div class="archive-summary"><div><strong>{categories.length}</strong><span>categories</span></div><div><strong>{total}</strong><span>published updates</span></div></div></div></section>
+  <section class="section"><div class="container taxonomy-grid">{categories.map((item)=><a class="taxonomy-card" href={`/category/${item.slug}/`}><strong>{item.name}</strong><span>{item.count} update{item.count===1?'':'s'} →</span></a>)}</div></section>
 </BaseLayout>

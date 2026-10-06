@@ -1,25 +1,19 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import { getPublishedPosts, slugify } from '../../lib/posts';
+import { getPublishedPostsByTag, slugify } from '../../lib/posts';
 
 export const prerender = false;
-
 const tagSlug = String(Astro.params.tag || '');
-const allPosts = await getPublishedPosts();
-const posts = allPosts.filter((post) => post.data.tags.some((tag: string) => slugify(tag) === tagSlug));
+const perPage = 24;
+const requested = Number.parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const page = Number.isSafeInteger(requested) && requested > 0 ? requested : 1;
+const { posts, total } = await getPublishedPostsByTag(tagSlug, perPage, (page - 1) * perPage);
 if (!posts.length) return Astro.redirect('/404/');
-const name = posts.flatMap((post) => post.data.tags).find((tag: string) => slugify(tag) === tagSlug) || tagSlug;
+const name = posts.flatMap((post) => post.data.tags).find((value: string) => slugify(value) === tagSlug) || tagSlug;
+const pages = Math.max(1, Math.ceil(total / perPage));
 ---
 <BaseLayout title={name} description={`Articles tagged ${name}.`}>
-  <section class="hero">
-    <div class="container hero-copy">
-      <div class="kicker">Tag</div>
-      <h1>{name}</h1>
-      <p>{posts.length} article{posts.length === 1 ? '' : 's'} tagged {name}.</p>
-    </div>
-  </section>
-  <section class="section">
-    <div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div></div>
-  </section>
+  <section class="hero"><div class="container hero-copy"><div class="kicker">Tag</div><h1>{name}</h1><p>{total} article{total === 1 ? '' : 's'} tagged {name}.</p></div></section>
+  <section class="section"><div class="container"><div class="post-grid">{posts.map((post) => <PostCard post={post} />)}</div>{pages > 1 && <nav class="archive-pagination">{page > 1 ? <a href={page === 2 ? `/tag/${tagSlug}/` : `/tag/${tagSlug}/?page=${page - 1}`}>← Previous</a> : <span></span>}<span>Page {page} of {pages}</span>{page < pages ? <a href={`/tag/${tagSlug}/?page=${page + 1}`}>Next →</a> : <span></span>}</nav>}</div></section>
 </BaseLayout>

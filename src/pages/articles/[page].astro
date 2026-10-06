@@ -2,18 +2,15 @@
 export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import { getPublishedPosts } from '../../lib/posts';
+import { getPublishedPostPage } from '../../lib/posts';
 
 const perPage = 18;
 const page = Number.parseInt(String(Astro.params.page || ''), 10);
-const allPosts = await getPublishedPosts();
-const pages = Math.max(1, Math.ceil(allPosts.length / perPage));
-
-if (!Number.isSafeInteger(page) || page < 2 || page > pages) {
-  return Astro.redirect('/404/');
-}
-
-const posts = allPosts.slice((page - 1) * perPage, page * perPage);
+if (!Number.isSafeInteger(page) || page < 2) return Astro.redirect('/404/');
+const offset = (page - 1) * perPage;
+const { posts, total } = await getPublishedPostPage(perPage, offset);
+const pages = Math.max(1, Math.ceil(total / perPage));
+if (page > pages || !posts.length) return Astro.redirect('/404/');
 ---
 <BaseLayout title={`Articles – Page ${page}`} description={`Browse published articles, page ${page}.`}>
   <section class="hero"><div class="container hero-copy"><div class="kicker">Archive</div><h1>All articles</h1><p>Page {page} of {pages}.</p></div></section>

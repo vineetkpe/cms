@@ -1,22 +1,22 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
-import { getPublishedPosts, slugify } from '../lib/posts';
+import { getFeaturedPublishedPost, getPublishedCategoryCounts, getPublishedPostPage, slugify } from '../lib/posts';
 import { getSiteSettings } from '../lib/site-settings';
 
 export const prerender = false;
 
 const site = await getSiteSettings();
-const posts = await getPublishedPosts();
+const [{ posts: latest, total }, featuredResult, categoryCounts] = await Promise.all([
+  getPublishedPostPage(10, 0),
+  getFeaturedPublishedPost(),
+  getPublishedCategoryCounts(),
+]);
 const builtIns = ['Job Updates','Exam Updates','Result Updates','Scholarship','Scheme'];
-const categories = builtIns.map((name) => ({
-  name,
-  count: posts.filter((post) => post.data.category === name).length,
-  latest: posts.find((post) => post.data.category === name),
-}));
-const featured = posts.find((post) => post.data.featured) || posts[0];
-const latest = posts.slice(0, 10);
-const secondary = posts.filter((post) => post.id !== featured?.id).slice(0, 3);
+const countMap = new Map(categoryCounts.map((item) => [item.slug, item.count]));
+const categories = builtIns.map((name) => ({ name, count: countMap.get(slugify(name)) || 0 }));
+const featured = featuredResult || latest[0];
+const secondary = latest.filter((post) => post.id !== featured?.id).slice(0, 3);
 ---
 <BaseLayout title={site.name} description={site.description} siteSettings={site}>
   <section class="news-hero">
@@ -29,9 +29,9 @@ const secondary = posts.filter((post) => post.id !== featured?.id).slice(0, 3);
       </div>
       <aside class="hero-status" aria-label="Publication status">
         <strong>Latest coverage</strong>
-        <div><span>Published updates</span><b>{posts.length}</b></div>
+        <div><span>Published updates</span><b>{total}</b></div>
         <div><span>Update categories</span><b>{builtIns.length}</b></div>
-        <div><span>Last refreshed</span><b>{posts[0] ? posts[0].data.pubDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}</b></div>
+        <div><span>Last refreshed</span><b>{latest[0] ? latest[0].data.pubDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) : '—'}</b></div>
       </aside>
     </div>
   </section>
