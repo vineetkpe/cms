@@ -1,5 +1,5 @@
 # Local development only. Never commit real production secrets.
 DEV_ADMIN_BYPASS=false
 
-# Optional provider key. Workers AI is the fallback when this is absent.
-# GEMINI_API_KEY=
+# Zero-cost mode is the default.
+# Paid AI providers and R2 are intentionally not configured.

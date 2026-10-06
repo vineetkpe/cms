@@ -13,9 +13,6 @@
   "triggers": {
     "crons": ["*/5 * * * *"]
   },
-  "ai": {
-    "binding": "AI"
-  },
   "d1_databases": [
     {
       "binding": "DB",

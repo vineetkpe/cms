@@ -43,24 +43,17 @@ export const GET: APIRoute = async ({ request }) => {
   });
 
   checks.push({
-    key: 'workers-ai',
-    label: 'Workers AI',
-    status: e.AI ? 'ok' : 'warning',
-    detail: e.AI ? 'AI binding is available for trend/content fallback.' : 'AI binding is not configured.',
-  });
-
-  checks.push({
-    key: 'gemini',
-    label: 'Gemini API',
-    status: String(e.GEMINI_API_KEY || '').trim() ? 'ok' : 'warning',
-    detail: String(e.GEMINI_API_KEY || '').trim() ? 'GEMINI_API_KEY is configured.' : 'Gemini key is not configured; the editor uses Workers AI fallback.',
+    key: 'zero-cost-ai',
+    label: 'AI inference',
+    status: 'ok',
+    detail: 'Disabled in zero-cost mode so no Workers AI or Gemini inference can generate usage charges.',
   });
 
   checks.push({
     key: 'trends',
     label: 'Google Trends',
     status: 'ok',
-    detail: 'Live RSS trend discovery is enabled; no private API key is required.',
+    detail: 'Live RSS trend discovery stays enabled without paid AI inference.',
   });
 
   checks.push({
