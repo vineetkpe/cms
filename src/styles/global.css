@@ -177,3 +177,20 @@ a:not(.brand):not(.post-image-wrap):focus-visible{text-decoration-thickness:2px;
   :root{--line:#c6cbd2;--line-strong:#9ea6b0;--muted:#4f5863;--muted-2:#59626e}
   .site-header{background:#fff}
 }
+
+/* Narrow-screen safeguards */
+@media(max-width:420px){
+  .header-inner{gap:8px}
+  .brand{gap:7px;min-width:0}
+  .brand-logo{width:32px!important;height:32px!important;flex:0 0 auto}
+  .brand-name{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:145px}
+  .menu-button{padding-inline:10px}
+  .hero-actions{display:grid;grid-template-columns:1fr}
+  .hero-actions a{width:100%}
+  .archive-pagination{grid-template-columns:1fr 1fr!important;gap:10px!important}
+  .archive-pagination>span{grid-column:1/-1;grid-row:1;text-align:center}
+  .archive-pagination>a:first-of-type{text-align:left}
+  .archive-pagination>a:last-of-type{text-align:right}
+  .article-actions{display:grid;grid-template-columns:1fr 1fr}
+  .article-action{min-height:44px}
+}
