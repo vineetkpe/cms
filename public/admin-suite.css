@@ -48,3 +48,30 @@ body.cms-suite{overflow-x:hidden}
   .cms-suite .top-actions .button,.cms-suite .actions .btn,.cms-suite .actions .button{flex:1 1 auto!important}
   .cms-suite table{min-width:620px}
 }
+
+
+/* Accessibility pass */
+.cms-suite .cms-skip-link{position:fixed;left:14px;top:14px;z-index:2000;background:#111827;color:#fff;padding:10px 14px;border-radius:9px;font-weight:800;transform:translateY(-180%);transition:transform .15s ease;text-decoration:none}
+.cms-suite .cms-skip-link:focus{transform:translateY(0)}
+.cms-suite .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.cms-suite :where(a,button,input,textarea,select,summary,[tabindex]):focus-visible{
+  outline:3px solid #4f46e5!important;
+  outline-offset:3px!important;
+}
+.cms-suite :where(a,button,input,textarea,select,summary,[tabindex]):focus:not(:focus-visible){outline:none}
+.cms-suite button,.cms-suite .btn,.cms-suite .button,.cms-suite .mini,.cms-suite input,.cms-suite select{min-height:44px}
+.cms-suite textarea{line-height:1.5}
+.cms-suite .cms-global-nav a,.cms-suite .cms-logout{min-height:44px}
+.cms-suite .cms-mobile-toggle{min-width:44px;min-height:44px}
+.cms-suite .top p,.cms-suite .topbar p,.cms-suite .sub,.cms-suite .status,.cms-suite .hint,.cms-suite .muted,
+.cms-suite .stat span,.cms-suite th,.cms-suite .cms-user-role,.cms-suite .cms-connection{color:#667085!important}
+.cms-suite th{font-weight:800!important}
+.cms-suite [aria-disabled="true"],.cms-suite :disabled{cursor:not-allowed!important}
+.cms-suite .notice[role="alert"],.cms-suite .msg[role="alert"],.cms-suite .message[role="alert"]{border:1px solid #fecdca!important}
+@media (prefers-reduced-motion: reduce){
+  .cms-suite *, .cms-suite *::before,.cms-suite *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+@media (prefers-contrast: more){
+  .cms-suite{--cms-line:#b9c0ca;--cms-muted:#4b5563}
+  .cms-suite .panel,.cms-suite .card,.cms-suite .stat,.cms-suite input,.cms-suite textarea,.cms-suite select{border-color:#aeb6c2!important}
+}

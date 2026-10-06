@@ -4,20 +4,24 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 <BaseLayout title="Search" description="Search articles on this site." noindex={true}>
   <div class="container page-wrap">
     <div class="kicker">Search</div><h1>Find an article</h1>
-    <input id="search" class="search-box" type="search" placeholder="Search titles, categories and topics…" autocomplete="off" />
-    <div id="results" class="search-results" aria-live="polite"></div>
+    <label class="sr-only" for="search">Search articles</label>
+    <input id="search" class="search-box" type="search" placeholder="Search titles, categories and topics…" autocomplete="off" aria-describedby="searchStatus" />
+    <p id="searchStatus" class="sr-only" aria-live="polite" aria-atomic="true">Type to search articles.</p>
+    <div id="results" class="search-results" role="region" aria-label="Search results"></div>
   </div>
 </BaseLayout>
 <script is:inline>
   const input = document.querySelector('#search');
   const results = document.querySelector('#results');
+  const status = document.querySelector('#searchStatus');
   let index = [];
   fetch('/search-index.json').then((r) => r.json()).then((data) => { index = data; });
   input?.addEventListener('input', () => {
     if (!(input instanceof HTMLInputElement) || !(results instanceof HTMLElement)) return;
     const q = input.value.trim().toLowerCase();
-    if (!q) { results.innerHTML = ''; return; }
+    if (!q) { results.innerHTML = ''; if(status instanceof HTMLElement)status.textContent='Type to search articles.'; return; }
     const matches = index.filter((item) => `${item.title} ${item.description} ${item.category} ${(item.tags || []).join(' ')}`.toLowerCase().includes(q)).slice(0, 20);
+    if(status instanceof HTMLElement)status.textContent=matches.length ? `${matches.length} search result${matches.length===1?'':'s'} found.` : 'No search results found.';
     results.replaceChildren(...matches.map((item) => {
       const a = document.createElement('a'); a.href = item.url; a.className = 'search-result';
       const h = document.createElement('h2'); h.textContent = item.title;

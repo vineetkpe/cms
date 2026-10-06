@@ -153,7 +153,7 @@ const jsonLd = JSON.stringify(schemas)
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <Header site={site} />
-    <main id="main-content"><slot /></main>
+    <main id="main-content" tabindex="-1"><slot /></main>
     <Footer site={site} />
   </body>
 </html>

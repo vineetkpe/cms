@@ -45,9 +45,11 @@ const isActive = (href) => href === '/' ? currentPath === '/' : currentPath.star
 <script is:inline>
   const button=document.querySelector('.menu-button');
   const nav=document.querySelector('#mobile-nav');
-  const close=()=>{if(!(nav instanceof HTMLElement)||!(button instanceof HTMLButtonElement))return;nav.hidden=true;button.setAttribute('aria-expanded','false')};
-  button?.addEventListener('click',()=>{if(!(nav instanceof HTMLElement)||!(button instanceof HTMLButtonElement))return;const open=nav.hidden;nav.hidden=!open;button.setAttribute('aria-expanded',String(open))});
-  window.addEventListener('resize',()=>{if(innerWidth>820)close()},{passive:true});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+  const close=(returnFocus=false)=>{if(!(nav instanceof HTMLElement)||!(button instanceof HTMLButtonElement))return;nav.hidden=true;button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Open navigation menu');if(returnFocus)button.focus()};
+  const open=()=>{if(!(nav instanceof HTMLElement)||!(button instanceof HTMLButtonElement))return;nav.hidden=false;button.setAttribute('aria-expanded','true');button.setAttribute('aria-label','Close navigation menu');const first=nav.querySelector('a');if(first instanceof HTMLElement)first.focus()};
+  button?.addEventListener('click',()=>{if(!(nav instanceof HTMLElement))return;nav.hidden?open():close(true)});
+  nav?.addEventListener('click',e=>{if((e.target instanceof Element)&&e.target.closest('a'))close(false)});
+  window.addEventListener('resize',()=>{if(innerWidth>820)close(false)},{passive:true});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!nav?.hidden)close(true)});
 </script>
 <style>.brand-logo{width:36px;height:36px;object-fit:contain;border-radius:9px}</style>
