@@ -12,6 +12,15 @@ type D1Statement = {
 
 type D1Binding = { prepare(query: string): D1Statement };
 
+type RevisionRow = {
+  id: number;
+  slug: string;
+  saved_at: number;
+  saved_by: string;
+  status: CmsPostStatus;
+  payload_json: string;
+};
+
 type PostRow = {
   slug: string;
   payload_json: string;
@@ -82,6 +91,78 @@ export async function moveDbPost(oldSlug: string, post: AdminPost) {
     await db().prepare('DELETE FROM cms_posts WHERE slug = ?').bind(oldSlug).run();
   }
   return saveDbPost(post);
+}
+
+export async function saveDbRevision(slug: string, post: AdminPost, savedBy: string) {
+  const cleanSlug = String(slug || post.slug || '').trim();
+  if (!cleanSlug) throw new Error('Revision slug is required.');
+  const status = getPostStatus(post);
+  const payload = JSON.stringify({
+    ...post,
+    slug: cleanSlug,
+    originalSlug: undefined,
+    draft: status === 'draft',
+    sha: undefined,
+  });
+  const savedAt = Math.floor(Date.now() / 1000);
+
+  await db().prepare(`INSERT INTO cms_post_revisions (slug, saved_at, saved_by, status, payload_json)
+    VALUES (?, ?, ?, ?, ?)`)
+    .bind(cleanSlug, savedAt, savedBy, status, payload)
+    .run();
+
+  await db().prepare(`DELETE FROM cms_post_revisions
+    WHERE slug = ?
+      AND id NOT IN (
+        SELECT id FROM cms_post_revisions
+        WHERE slug = ?
+        ORDER BY saved_at DESC, id DESC
+        LIMIT 50
+      )`)
+    .bind(cleanSlug, cleanSlug)
+    .run();
+
+  return savedAt;
+}
+
+export async function listDbRevisions(slug: string, limit = 30) {
+  const safeLimit = Math.max(1, Math.min(50, Math.round(limit || 30)));
+  const result = await db()
+    .prepare(`SELECT id, slug, saved_at, saved_by, status, payload_json
+      FROM cms_post_revisions
+      WHERE slug = ?
+      ORDER BY saved_at DESC, id DESC
+      LIMIT ?`)
+    .bind(slug, safeLimit)
+    .all<RevisionRow>();
+
+  return (result.results || []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    savedAt: row.saved_at,
+    savedBy: row.saved_by,
+    status: row.status,
+  }));
+}
+
+export async function getDbRevision(slug: string, id: number): Promise<AdminPost | null> {
+  const row = await db()
+    .prepare(`SELECT id, slug, saved_at, saved_by, status, payload_json
+      FROM cms_post_revisions
+      WHERE slug = ? AND id = ?
+      LIMIT 1`)
+    .bind(slug, id)
+    .first<RevisionRow>();
+
+  if (!row) return null;
+  const post = JSON.parse(row.payload_json) as AdminPost;
+  return {
+    ...post,
+    slug,
+    originalSlug: undefined,
+    draft: row.status === 'draft',
+    sha: undefined,
+  };
 }
 
 export async function publishDueDbPosts(now = Date.now()) {

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { deleteDbPost, getPostStatus, listDbPosts, moveDbPost } from '../../../lib/db-posts';
+import { deleteDbPost, getPostStatus, listDbPosts, moveDbPost, saveDbRevision } from '../../../lib/db-posts';
 import type { AdminPost } from '../../../lib/markdown';
 import { slugify } from '../../../lib/posts';
 
@@ -91,6 +91,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const status = getPostStatus(post);
+    if (source) {
+      await saveDbRevision(post.slug, { ...source, slug: post.slug, originalSlug: undefined }, auth.username);
+    }
     await moveDbPost(sourceSlug, post);
     return Response.json({ ok: true, slug: post.slug, status, storage: 'd1', commit: null });
   } catch (error) {

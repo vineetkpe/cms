@@ -1,50 +1,69 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, getTextFileAtRef, listCommitsForPath, putTextFile } from '../../../lib/github';
+import { getDbPost, getDbRevision, listDbRevisions, saveDbPost, saveDbRevision } from '../../../lib/db-posts';
 import { slugify } from '../../../lib/posts';
 
 export const prerender = false;
-const DIR = 'src/content/posts';
 
-function postPath(slugInput: unknown) {
-  const slug = slugify(String(slugInput || ''));
+function cleanSlug(value: unknown) {
+  const slug = slugify(String(value || ''));
   if (!slug) throw new Error('Invalid slug.');
-  return { slug, path: `${DIR}/${slug}.md` };
+  return slug;
 }
 
 export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
+
   try {
-    const { slug, path } = postPath(new URL(request.url).searchParams.get('slug'));
-    const commits = await listCommitsForPath(path, 30);
-    const revisions = Array.isArray(commits) ? commits.map((item: any) => ({
-      sha: String(item.sha || ''),
-      message: String(item.commit?.message || '').split('\n')[0].slice(0, 180),
-      author: String(item.commit?.author?.name || item.author?.login || 'Unknown'),
-      date: String(item.commit?.author?.date || ''),
-      url: String(item.html_url || ''),
-    })).filter((item: any) => item.sha) : [];
-    return Response.json({ slug, revisions }, { headers: { 'Cache-Control': 'no-store' } });
+    const slug = cleanSlug(new URL(request.url).searchParams.get('slug'));
+    const rows = await listDbRevisions(slug, 30);
+    const revisions = rows.map((row) => ({
+      id: row.id,
+      sha: String(row.id),
+      message: `${row.status[0].toUpperCase() + row.status.slice(1)} revision`,
+      author: row.savedBy || 'CMS user',
+      date: new Date(row.savedAt * 1000).toISOString(),
+      status: row.status,
+      storage: 'd1',
+    }));
+
+    return Response.json({ slug, revisions, storage: 'd1' }, {
+      headers: { 'Cache-Control': 'no-store' }
+    });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load revisions.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to load revisions.' }, {
+      status: 400,
+      headers: { 'Cache-Control': 'no-store' }
+    });
   }
 };
 
 export const POST: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin', 'editor']);
   if (!auth.ok) return authError(auth);
+
   try {
     const body = await request.json();
-    const { slug, path } = postPath(body.slug);
-    const revision = String(body.sha || '').trim();
-    if (!/^[a-f0-9]{40}$/i.test(revision)) throw new Error('Invalid revision.');
+    const slug = cleanSlug(body.slug);
+    const revisionId = Number.parseInt(String(body.revisionId ?? body.sha ?? ''), 10);
+    if (!Number.isSafeInteger(revisionId) || revisionId <= 0) throw new Error('Invalid revision.');
 
-    const historic = await getTextFileAtRef(path, revision);
-    const current = await getTextFile(path);
-    const result = await putTextFile(path, historic.text, `Restore article revision: ${slug} (${revision.slice(0, 8)})`, current.sha);
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const [historic, current] = await Promise.all([
+      getDbRevision(slug, revisionId),
+      getDbPost(slug),
+    ]);
+    if (!historic) throw new Error('Revision was not found.');
+    if (!current) throw new Error('Current article was not found.');
+
+    await saveDbRevision(slug, current, auth.username);
+    await saveDbPost({ ...historic, slug, originalSlug: undefined, sha: undefined });
+
+    return Response.json({ ok: true, slug, revisionId, storage: 'd1' });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : 'Unable to restore revision.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ error: error instanceof Error ? error.message : 'Unable to restore revision.' }, {
+      status: 400,
+      headers: { 'Cache-Control': 'no-store' }
+    });
   }
 };
