@@ -43,10 +43,10 @@ export const prerender = true;
       <div class="grid"><div class="field"><label>AdSense publisher</label><input id="adsensePublisherId" placeholder="ca-pub-..."></div><div class="field"><label>Article ad slot</label><input id="adsenseArticleSlot"></div></div>
       <div class="field"><label>Sidebar ad slot</label><input id="adsenseSidebarSlot"></div>
       <div class="integration">
-        <strong>GitHub publishing token</strong>
-        <div class="hint">The secret itself is never stored in the CMS or GitHub. Keep it only in Cloudflare Worker Secrets as <code>CMS_GITHUB_TOKEN</code>.</div>
-        <div class="grid" style="margin-top:14px"><div class="field"><label>Token expiry date</label><input id="githubTokenExpiresAt" type="date"><div class="hint">This stores only the expiry date so the CMS can warn you before renewal.</div></div><div><div class="hint">Status</div><div id="githubTokenStatus" class="statusline">No expiry date set.</div></div></div>
-        <div class="actions"><a class="button" href="https://dash.cloudflare.com/" target="_blank" rel="noopener">Open Cloudflare to replace token ↗</a></div>
+        <strong>Temporary media storage</strong>
+        <div class="hint">Publishing now uses D1 and does not require GitHub. Until R2 is enabled, only media uploads still use the temporary <code>CMS_GITHUB_TOKEN</code> secret.</div>
+        <div class="grid" style="margin-top:14px"><div class="field"><label>Token expiry date</label><input id="githubTokenExpiresAt" type="date"><div class="hint">Optional expiry reminder for the temporary media token while R2 is deferred.</div></div><div><div class="hint">Status</div><div id="githubTokenStatus" class="statusline">No expiry date set.</div></div></div>
+        <div class="actions"><a class="button" href="https://dash.cloudflare.com/" target="_blank" rel="noopener">Open Cloudflare secrets ↗</a></div>
       </div>
     </section>
 
