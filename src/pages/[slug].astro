@@ -5,10 +5,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import AdSlot from '../components/AdSlot.astro';
 import { getPublishedPostBySlug, getPublishedPosts, getRelatedPosts, slugify } from '../lib/posts';
-import site from '../data/site.json';
+import { getSiteSettings } from '../lib/site-settings';
 
 export const prerender = false;
 
+const site = await getSiteSettings();
 const slug = String(Astro.params.slug || '');
 const post = await getPublishedPostBySlug(slug);
 if (!post) return Astro.redirect('/404/');
@@ -95,6 +96,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
   modifiedTime={(post.data.updatedDate || publishedAt).toISOString()}
   section={post.data.category}
   tags={post.data.tags}
+  siteSettings={site}
 >
   <div class="container article-shell">
     <article class="article-main">
@@ -123,7 +125,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
 
       {post.__d1 ? <div class="article-content" set:html={articleHtml} /> : <div class="article-content"><Content /></div>}
 
-      {showInlineAd && <AdSlot slot={site.adsenseArticleSlot} />}
+      {showInlineAd && <AdSlot slot={site.adsenseArticleSlot} publisherId={site.adsensePublisherId} />}
 
       {post.data.faq.length > 0 && (
         <section class="faq-section" aria-labelledby="faq-title">
@@ -159,7 +161,7 @@ const schemas = [articleSchema, breadcrumbSchema, faqSchema].filter(Boolean);
           {headings.filter((h) => h.depth <= 3).map((h) => <a href={`#${h.slug}`}>{h.text}</a>)}
         </nav>
       )}
-      {showRailAd && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" />}
+      {showRailAd && <AdSlot slot={site.adsenseSidebarSlot} format="vertical" publisherId={site.adsensePublisherId} />}
     </aside>
   </div>
   <script is:inline define:vars={{ slug }}>

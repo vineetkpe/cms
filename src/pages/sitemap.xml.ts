@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
 import { getPublishedPosts, slugify } from '../lib/posts';
-import site from '../data/site.json';
+import { getSiteSettings } from '../lib/site-settings';
 import pages from '../data/pages.json';
 
-export const prerender = true;
+export const prerender = false;
 type Entry = { loc: string; lastmod?: string };
 const managedPaths = [
   ['about', '/about/'],
@@ -21,6 +21,7 @@ const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, 
 const perPage = 18;
 
 export const GET: APIRoute = async () => {
+  const site = await getSiteSettings();
   const posts = await getPublishedPosts();
   const categories = [...new Set(posts.map((post) => post.data.category))];
   const tags = [...new Set(posts.flatMap((post) => post.data.tags))];

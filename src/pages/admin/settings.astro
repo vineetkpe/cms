@@ -62,7 +62,7 @@ export const prerender = true;
       <div class="grid"><div class="field"><label>X / Twitter</label><input id="socialX" type="url"></div><div class="field"><label>LinkedIn</label><input id="socialLinkedin" type="url"></div><div class="field"><label>Instagram</label><input id="socialInstagram" type="url"></div><div class="field"><label>YouTube</label><input id="socialYoutube" type="url"></div></div>
     </section>
 
-    <div class="actions"><button class="button primary" type="submit">Save settings</button><span class="hint">Changes publish with the next successful build.</span></div>
+    <div class="actions"><button class="button primary" type="submit">Save settings</button><span class="hint">Settings are saved directly to Cloudflare D1.</span></div>
   </form>
 </main>
 <script is:inline>
@@ -105,7 +105,7 @@ export const prerender = true;
     };
   }
   $('githubTokenExpiresAt').addEventListener('change', updateGithubTokenStatus);
-  $('form').addEventListener('submit', async (event) => { event.preventDefault(); capture(); try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ settings, sha }) }); msg('Settings saved.'); const d = await api('/api/admin/settings'); settings = d.settings; sha = d.sha; fill(); } catch (error) { msg(error instanceof Error ? error.message : 'Unable to save settings.', false); } });
+  $('form').addEventListener('submit', async (event) => { event.preventDefault(); capture(); try { await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ settings, sha }) }); msg('Settings saved to D1.'); const d = await api('/api/admin/settings'); settings = d.settings; sha = d.sha; fill(); } catch (error) { msg(error instanceof Error ? error.message : 'Unable to save settings.', false); } });
   api('/api/admin/settings').then((d) => { settings = d.settings; sha = d.sha; fill(); }).catch((error) => msg(error instanceof Error ? error.message : 'Unable to load settings.', false));
 </script>
 </body>

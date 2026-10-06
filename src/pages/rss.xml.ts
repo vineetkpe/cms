@@ -1,8 +1,11 @@
 import rss from '@astrojs/rss';
 import { getPublishedPosts } from '../lib/posts';
-import site from '../data/site.json';
+import { getSiteSettings } from '../lib/site-settings';
+
+export const prerender = false;
 
 export async function GET() {
+  const site = await getSiteSettings();
   const posts = await getPublishedPosts();
   return rss({
     title: site.name,

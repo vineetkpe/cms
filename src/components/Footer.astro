@@ -1,5 +1,5 @@
 ---
-import site from '../data/site.json';
+const { site } = Astro.props;
 const year = new Date().getFullYear();
 const socials = Object.entries(site.social || {}).filter(([, href]) => Boolean(href));
 ---

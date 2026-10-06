@@ -1,9 +1,11 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import site from '../data/site.json';
+import { getSiteSettings } from '../lib/site-settings';
 import '../styles/global.css';
 import '../styles/editorial.css';
+
+const site = Astro.props.siteSettings || await getSiteSettings();
 
 const {
   title = site.name,
@@ -118,8 +120,8 @@ const jsonLd = JSON.stringify(schemas)
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <Header />
+    <Header site={site} />
     <main id="main-content"><slot /></main>
-    <Footer />
+    <Footer site={site} />
   </body>
 </html>

@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { authError, requireAdmin } from '../../../lib/auth';
-import site from '../../../data/site.json';
+import { getSiteSettings } from '../../../lib/site-settings';
 
 export const prerender = false;
 
@@ -63,9 +63,9 @@ function tokenize(text: string) {
   return text.toLowerCase().split(/[^a-z0-9+#]+/).map((x) => x.trim()).filter((x) => x.length >= 3);
 }
 
-function siteKeywords() {
-  const configured = Array.isArray((site as any).trendKeywords) ? (site as any).trendKeywords : [];
-  const fromNiche = tokenize(String((site as any).contentNiche || ''));
+function siteKeywords(site: any) {
+  const configured = Array.isArray(site?.trendKeywords) ? site.trendKeywords : [];
+  const fromNiche = tokenize(String(site?.contentNiche || ''));
   return [...new Set([...configured.map((x: unknown) => String(x).toLowerCase().trim()), ...fromNiche])].filter(Boolean).slice(0, 40);
 }
 
@@ -127,8 +127,8 @@ function extractJson(text: string) {
   try { return JSON.parse(text.slice(start, end + 1)); } catch { return null; }
 }
 
-async function loadTrends(geo: string) {
-  const keywords = siteKeywords();
+async function loadTrends(geo: string, site: any) {
+  const keywords = siteKeywords(site);
   const url = `https://trends.google.com/trending/rss?geo=${encodeURIComponent(geo)}`;
   const response = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 CMS Trend Intelligence/1.0', 'Accept': 'application/rss+xml,text/xml;q=0.9,*/*;q=0.8' },
@@ -167,10 +167,11 @@ export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
+    const site = await getSiteSettings();
     const url = new URL(request.url);
     const geo = String(url.searchParams.get('geo') || (site as any).trendGeo || 'IN').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) || 'IN';
     const niche = String((site as any).contentNiche || 'jobs, careers, education and useful updates');
-    const data = await loadTrends(geo);
+    const data = await loadTrends(geo, site);
     const kv = (env as any).CMS_KV as KVBinding | undefined;
     const cacheKey = `cms:trend-ideas:v2:${geo}:${data.keywords.join('-').slice(0, 120)}`;
     let cachedIdeas: Idea[] | null = null;
@@ -200,10 +201,11 @@ export const POST: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin', 'editor']);
   if (!auth.ok) return authError(auth);
   try {
+    const site = await getSiteSettings();
     const body = await request.json().catch(() => ({}));
     const geo = String(body?.geo || (site as any).trendGeo || 'IN').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2) || 'IN';
     const niche = String((site as any).contentNiche || 'jobs, careers, education and useful updates');
-    const data = await loadTrends(geo);
+    const data = await loadTrends(geo, site);
     const aiIdeas = await generateAiIdeas(data.relevant, niche, data.keywords);
     const ideas = aiIdeas?.length ? aiIdeas : fallbackIdeas(data.relevant, niche);
     const kv = (env as any).CMS_KV as KVBinding | undefined;

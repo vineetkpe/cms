@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import { authError, requireAdmin } from '../../../lib/auth';
-import { getTextFile, putTextFile } from '../../../lib/github';
+import { getSiteSettings, saveSiteSettings } from '../../../lib/site-settings';
 import { safePublicUrl, text } from '../../../lib/security';
 
 export const prerender = false;
-const PATH = 'src/data/site.json';
 const HEX = /^#[0-9a-f]{6}$/i;
 
 function safeOrigin(value: unknown) {
@@ -36,8 +35,8 @@ export const GET: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request);
   if (!auth.ok) return authError(auth);
   try {
-    const file = await getTextFile(PATH);
-    return Response.json({ settings: JSON.parse(file.text), sha: file.sha, role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
+    const settings = await getSiteSettings();
+    return Response.json({ settings, sha: 'd1', storage: 'd1', role: auth.role }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to load settings.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
@@ -47,7 +46,7 @@ export const PUT: APIRoute = async ({ request }) => {
   const auth = await requireAdmin(request, ['owner', 'admin']);
   if (!auth.ok) return authError(auth);
   try {
-    const { settings, sha } = await request.json();
+    const { settings } = await request.json();
     if (!settings || typeof settings !== 'object') throw new Error('Invalid settings.');
 
     const primaryColor = String(settings.primaryColor || '');
@@ -117,8 +116,8 @@ export const PUT: APIRoute = async ({ request }) => {
 
     if (!clean.name || !clean.tagline || !clean.description) throw new Error('Name, tagline and description are required.');
     if (!clean.contentNiche) throw new Error('Content niche is required for trend recommendations.');
-    const result = await putTextFile(PATH, `${JSON.stringify(clean, null, 2)}\n`, 'Update site settings', String(sha || ''));
-    return Response.json({ ok: true, commit: result?.commit?.sha || null });
+    const updatedAt = await saveSiteSettings(clean as any, auth.username);
+    return Response.json({ ok: true, storage: 'd1', updatedAt, sha: String(updatedAt), commit: null });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'Unable to update settings.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }

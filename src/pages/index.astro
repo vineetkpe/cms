@@ -2,10 +2,11 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import { getPublishedPosts, slugify } from '../lib/posts';
-import site from '../data/site.json';
+import { getSiteSettings } from '../lib/site-settings';
 
 export const prerender = false;
 
+const site = await getSiteSettings();
 const posts = await getPublishedPosts();
 const featured = posts.find((post) => post.data.featured) || posts[0];
 const remaining = posts.filter((post) => post.id !== featured?.id);
@@ -14,7 +15,7 @@ const latest = remaining.slice(2, 11);
 const categoryNames = [...new Set(posts.map((post) => post.data.category))].slice(0, 6);
 const authorCount = new Set(posts.map((post) => post.data.author)).size;
 ---
-<BaseLayout title={site.name} description={site.description}>
+<BaseLayout title={site.name} description={site.description} siteSettings={site}>
   <section class="blog-hero">
     <div class="container blog-hero-inner">
       <div class="hero-copy-block">
