@@ -8,6 +8,47 @@ type D1Statement = {
 };
 
 const MAX_MEDIA_ORIGIN_READS_PER_DAY = 50000;
+const REDIRECT_HOT_TTL_MS = 15_000;
+const PUBLIC_HTML_CACHE_SECONDS = 30;
+const redirectHotCache = new Map<string, { expiresAt: number; rule: { destination: string; status: number } | null }>();
+
+async function getRedirectRule(env: any, pathname: string) {
+  const cached = redirectHotCache.get(pathname);
+  if (cached && cached.expiresAt > Date.now()) return cached.rule;
+
+  const db = env.DB as { prepare(query: string): D1Statement } | undefined;
+  if (!db) return null;
+
+  const rule = await db
+    .prepare('SELECT destination, status FROM cms_redirects WHERE source = ? LIMIT 1')
+    .bind(pathname)
+    .first<{ destination: string; status: number }>();
+
+  if (redirectHotCache.size > 1000) redirectHotCache.clear();
+  redirectHotCache.set(pathname, {
+    expiresAt: Date.now() + REDIRECT_HOT_TTL_MS,
+    rule: rule?.destination ? { destination: rule.destination, status: Number(rule.status) || 301 } : null,
+  });
+  return redirectHotCache.get(pathname)?.rule || null;
+}
+
+function isPublicHtmlCandidate(request: Request, url: URL) {
+  if (request.method !== 'GET') return false;
+  if (
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/_astro/') ||
+    url.pathname.startsWith('/media/') ||
+    url.pathname.startsWith('/uploads/') ||
+    url.pathname.startsWith('/brand/') ||
+    url.pathname.startsWith('/demo/') ||
+    url.pathname === '/robots.txt' ||
+    url.pathname === '/sitemap.xml' ||
+    url.pathname === '/rss.xml' ||
+    url.pathname === '/search-index.json'
+  ) return false;
+  return true;
+}
 
 function shouldCheckRedirect(pathname: string) {
   return !(
@@ -107,21 +148,28 @@ export default {
 
     if ((request.method === 'GET' || request.method === 'HEAD') && shouldCheckRedirect(url.pathname)) {
       try {
-        const db = env.DB as { prepare(query: string): D1Statement } | undefined;
-        if (db) {
-          const rule = await db
-            .prepare('SELECT destination, status FROM cms_redirects WHERE source = ? LIMIT 1')
-            .bind(url.pathname)
-            .first<{ destination: string; status: number }>();
-
-          if (rule?.destination) {
-            const target = new URL(rule.destination, url.origin);
-            if (!target.search && url.search) target.search = url.search;
-            return Response.redirect(target.toString(), Number(rule.status) || 301);
-          }
+        const rule = await getRedirectRule(env, url.pathname);
+        if (rule?.destination) {
+          const target = new URL(rule.destination, url.origin);
+          if (!target.search && url.search) target.search = url.search;
+          return Response.redirect(target.toString(), rule.status);
         }
       } catch {
         // Redirect storage should never make the site unavailable.
+      }
+    }
+
+    const publicCacheable = isPublicHtmlCandidate(request, url);
+    const edgeCache = (globalThis as any).caches?.default;
+    const edgeKey = publicCacheable ? new Request(url.toString(), { method: 'GET' }) : null;
+
+    if (publicCacheable && edgeCache && edgeKey) {
+      const cached = await edgeCache.match(edgeKey);
+      if (cached) {
+        const headers = new Headers(cached.headers);
+        headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+        headers.set('X-CMS-Cache', 'HIT');
+        return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
       }
     }
 
@@ -131,10 +179,11 @@ export default {
     const isLogin = url.pathname === '/admin/login/' || url.pathname === '/admin/login';
     const isPreview = url.pathname === '/admin/preview/' || url.pathname === '/admin/preview';
 
+    let finalResponse = response;
     if (isAdminHtml && !isLogin && !isPreview) {
       const Rewriter = (globalThis as any).HTMLRewriter;
       if (Rewriter) {
-        return new Rewriter()
+        finalResponse = new Rewriter()
           .on('head', {
             element(element: any) {
               element.append('<link rel="stylesheet" href="/admin-suite.css"><script src="/admin-suite.js" defer></script>', { html: true });
@@ -144,7 +193,35 @@ export default {
       }
     }
 
-    return response;
+    if (
+      publicCacheable &&
+      edgeCache &&
+      edgeKey &&
+      finalResponse.status === 200 &&
+      (finalResponse.headers.get('content-type') || '').includes('text/html') &&
+      !finalResponse.headers.has('set-cookie')
+    ) {
+      const cacheHeaders = new Headers(finalResponse.headers);
+      cacheHeaders.set('Cache-Control', `public, max-age=${PUBLIC_HTML_CACHE_SECONDS}`);
+      cacheHeaders.set('X-CMS-Cache', 'MISS');
+      const cacheCopy = new Response(finalResponse.clone().body, {
+        status: finalResponse.status,
+        statusText: finalResponse.statusText,
+        headers: cacheHeaders,
+      });
+      ctx.waitUntil(edgeCache.put(edgeKey, cacheCopy));
+
+      const browserHeaders = new Headers(finalResponse.headers);
+      browserHeaders.set('Cache-Control', 'public, max-age=0, must-revalidate');
+      browserHeaders.set('X-CMS-Cache', 'MISS');
+      return new Response(finalResponse.body, {
+        status: finalResponse.status,
+        statusText: finalResponse.statusText,
+        headers: browserHeaders,
+      });
+    }
+
+    return finalResponse;
   },
 
   async scheduled(controller: { scheduledTime: number }, _env: unknown, ctx: { waitUntil(promise: Promise<unknown>): void }) {
